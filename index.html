@@ -290,7 +290,7 @@
                 const showComparePopup = ref(false);
                 const showAdminPopup = ref(false);
                 const showHelpPopup = ref(false);
-                const showAdminToolPopup = ref(false); // [추가] 몰아주기 팝업 상태
+                const showAdminToolPopup = ref(false); // 관리자 도구 팝업
 
                 const adminUserList = ref([]);
                 const adminTargetUserId = ref('');
@@ -308,7 +308,7 @@
                     albumCovers: Array(9).fill("")
                 });
 
-                // --- 유틸리티 함수 ---
+                // 도구 함수들
                 const getGameDate = () => {
                     const now = new Date();
                     if (now.getHours() < 8) now.setDate(now.getDate() - 1);
@@ -333,8 +333,8 @@
                     try {
                         const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
                         const diff = Date.now() - date.getTime();
-                        if (diff < 60 * 60 * 1000) return 'bg-green-500'; // 1시간 이내
-                        if (diff < 24 * 60 * 60 * 1000) return 'bg-yellow-400'; // 24시간 이내
+                        if (diff < 60 * 60 * 1000) return 'bg-green-500'; 
+                        if (diff < 24 * 60 * 60 * 1000) return 'bg-yellow-400'; 
                         return 'bg-gray-300';
                     } catch(e) { return 'bg-gray-300'; }
                 };
@@ -350,11 +350,27 @@
                     navigator.clipboard.writeText(text).then(() => { alert("복사되었습니다! 📋\n게임 채팅창에 붙여넣기 하세요."); });
                 };
 
-                // --- 데이터 로직 ---
+                // 순서 재배치: computed와 함수들
+                const isAdmin = computed(() => userData.value && userData.value.role === 'admin');
+
                 const updateLastActive = async () => {
                     if (!userData.value || isAdmin.value) return;
                     const docId = `S${userData.value.server}_${userData.value.nickname}`;
                     await db.collection('users').doc(docId).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() });
+                };
+
+                const checkAndResetDailyLimit = async () => {
+                    if (!userData.value || isAdmin.value) return; 
+                    const todayGameDate = getGameDate();
+                    if (userData.value.dailyExchangeDate !== todayGameDate) {
+                        userData.value.dailyExchangeCount = 0;
+                        userData.value.dailyExchangeDate = todayGameDate;
+                        tradeCount.value = 0;
+                        const docId = `S${userData.value.server}_${userData.value.nickname}`;
+                        try { await db.collection('users').doc(docId).update({ dailyExchangeCount: 0, dailyExchangeDate: todayGameDate }); } catch(e) {}
+                    } else {
+                        tradeCount.value = userData.value.dailyExchangeCount || 0;
+                    }
                 };
 
                 const loadAppConfig = async () => {
@@ -367,6 +383,22 @@
                         }
                     } catch (e) {}
                 };
+
+                const filteredUserList = computed(() => {
+                    if (!userList.value.length) return [];
+                    let list = userList.value;
+                    if (searchKeyword.value) {
+                        const keyword = searchKeyword.value.toLowerCase();
+                        list = list.filter(user => user.nickname.toLowerCase().includes(keyword) || String(user.server).includes(keyword));
+                    }
+                    // 정렬 기준: 최근 업데이트 순
+                    list.sort((a, b) => {
+                        const timeA = a.lastUpdated ? (a.lastUpdated.toMillis ? a.lastUpdated.toMillis() : new Date(a.lastUpdated).getTime()) : 0;
+                        const timeB = b.lastUpdated ? (b.lastUpdated.toMillis ? b.lastUpdated.toMillis() : new Date(b.lastUpdated).getTime()) : 0;
+                        return timeB - timeA;
+                    });
+                    return list;
+                });
 
                 const fetchUsersAndShowList = async () => {
                     showUserListPopup.value = true;
@@ -388,7 +420,7 @@
                     finally { isLoading.value = false; }
                 };
 
-                // --- 관리자 전용 기능 (몰아주기) ---
+                // 관리자 기능
                 const openAdminTool = () => {
                     if (!isAdmin.value) return;
                     showAdminToolPopup.value = true;
@@ -465,7 +497,6 @@
                     finally { isLoading.value = false; }
                 };
 
-                // --- 기본 로직 ---
                 const openCompare = (targetUser) => {
                     showUserListPopup.value = false;
                     showPopup.value = false;
@@ -527,10 +558,12 @@
                             }
                             const myNewCount = myCurrentCount + 1;
                             const targetNewCount = targetCount + 1;
-                            // [추가] 거래 시 업데이트 시간 갱신
+                            
+                            // [수정] 거래 시 lastUpdated 갱신
                             const now = firebase.firestore.FieldValue.serverTimestamp();
                             transaction.update(myDocRef, { collection: myCol, dailyExchangeCount: myNewCount, dailyExchangeDate: today, lastUpdated: now });
                             transaction.update(targetDocRef, { collection: targetCol, dailyExchangeCount: targetNewCount, dailyExchangeDate: today, lastUpdated: now });
+                            
                             userData.value.collection = myCol;
                             userData.value.dailyExchangeCount = myNewCount;
                             userData.value.dailyExchangeDate = today;
@@ -553,7 +586,7 @@
                 const logout = () => { localStorage.removeItem('oq_user_v4'); userData.value = null; isLoggedIn.value = false; loginForm.value = { server: '', nickname: '', password: '' }; };
                 const currentAlbumCards = computed(() => userData.value ? userData.value.collection.slice(currentAlbumIdx.value*9, (currentAlbumIdx.value*9)+9) : []);
                 
-                // [중요] 카드 수량 변경 시 lastUpdated 갱신
+                // [수정] 카드 수정 시 lastUpdated 갱신
                 const updateCount = (i, chg) => { 
                     if (!userData.value) return; 
                     const rIdx = (currentAlbumIdx.value*9)+i; 
@@ -563,7 +596,7 @@
                     const docId = userData.value.role === 'admin' ? 'MASTER_ADMIN' : `S${userData.value.server}_${userData.value.nickname}`; 
                     db.collection('users').doc(docId).update({
                         collection: userData.value.collection,
-                        lastUpdated: firebase.firestore.FieldValue.serverTimestamp() // 추가됨
+                        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
                     }).catch(()=>{}); 
                 };
 
@@ -574,7 +607,6 @@
                 const prevAlbum = () => { if(currentAlbumIdx.value > 0) currentAlbumIdx.value--; };
                 const nextAlbum = () => { if(currentAlbumIdx.value < 8) currentAlbumIdx.value++; };
                 
-                // [오류 수정] targetCardCardIdx -> targetCardIdx
                 const checkExchange = async (i) => { const rIdx = (currentAlbumIdx.value*9)+i; if (userData.value.collection[rIdx]>0) return; targetCardIdx.value = i; showPopup.value = true; exchangeList.value = []; isLoading.value = true; try { const snap = await db.collection('users').get(); const matches = []; snap.forEach(doc => { const u = doc.data(); if(u.nickname === userData.value.nickname) return; if(u.collection && u.collection[rIdx] > 1) { const giveable = []; for(let k=0; k<81; k++) { if(userData.value.collection[k]>1 && u.collection[k]===0) { const aIdx = Math.floor(k/9); const albumName = appConfig.value.albumNames[aIdx] || `앨범${aIdx+1}`; giveable.push(`${albumName} - 사진${(k%9)+1}`); } } matches.push({id:doc.id, server:u.server, nickname:u.nickname, collection: u.collection, giveable}); } }); exchangeList.value = matches; } catch(e){} finally { isLoading.value = false; } };
 
                 return { 
