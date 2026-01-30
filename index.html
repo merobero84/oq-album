@@ -56,7 +56,7 @@
   <!-- 관리자 -->
   <div v-else-if="isAdmin" class="flex flex-col h-screen bg-gray-900 text-white">
     <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800">
-      <h1 class="text-lg font-extrabold text-yellow-400 leading-none">VIP 관리 모드</h1>
+      <h1 class="text-lg font-extrabold text-yellow-400 leading-none">관리자 모드</h1>
       <div class="flex gap-2">
         <button @click="showAdminSettingsPopup = true" class="text-xs bg-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-600 btn-press flex items-center gap-1">
           <i class="fas fa-cog"></i><span>설정</span>
@@ -136,7 +136,7 @@
       </div>
 
       <!-- ✅ 유저 삭제(비번 기능 제거됨) -->
-      <div v-else>
+      <div v-else-if="adminTab==='users'">
         <div class="bg-gray-800 border border-gray-700 rounded-xl p-4 mb-4">
           <div class="text-sm font-extrabold mb-1">🧹 잘못 가입된 유저 정리</div>
           <div class="text-[11px] text-gray-300 leading-relaxed">
@@ -169,6 +169,47 @@
           </div>
         </div>
       </div>
+
+      <!-- ✅ 이벤트 초기화 -->
+<div v-else class="space-y-4">
+  <div class="bg-gray-800 border border-gray-700 rounded-xl p-4">
+    <div class="text-sm font-extrabold mb-1">🔥 시즌 이벤트 초기화</div>
+    <div class="text-[11px] text-gray-300 leading-relaxed">
+      전체 유저의 <b class="text-yellow-300">카드(81개)</b>와 <b class="text-yellow-300">교환횟수</b>를 초기화합니다.<br>
+      <span class="text-red-300 font-extrabold">복구 불가</span>이니, 이벤트 시작할 때만 사용하세요.
+    </div>
+  </div>
+
+  <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
+    <div class="text-xs text-gray-400 mb-2">초기화 대상</div>
+    <ul class="text-[11px] text-gray-200 space-y-1">
+      <li>• 모든 유저 collection → 0으로 초기화</li>
+      <li>• dailyExchangeCount → 0</li>
+      <li>• dailyExchangeDate → 오늘 게임 날짜로 설정</li>
+      <li>• lastUpdated → 서버시간 갱신</li>
+    </ul>
+  </div>
+
+  <button
+    @click="adminResetAllUsers()"
+    class="w-full bg-red-500 hover:bg-red-600 text-white font-extrabold py-3 rounded-xl btn-press shadow-lg flex items-center justify-center gap-2"
+    :disabled="isLoading"
+    :class="isLoading ? 'btn-disabled' : ''"
+  >
+    <i class="fas fa-triangle-exclamation"></i>
+    전체 유저 카드 초기화 실행
+  </button>
+
+  <div v-if="resetStatus.visible" class="bg-gray-800 border border-gray-700 rounded-xl p-4">
+    <div class="text-xs text-gray-300 font-extrabold mb-2">진행 상황</div>
+    <div class="w-full h-3 bg-gray-700 rounded-full overflow-hidden border border-gray-600">
+      <div class="h-full bg-yellow-500 gauge-fill" :style="{ width: resetStatus.progress + '%' }"></div>
+    </div>
+    <div class="text-[11px] text-gray-300 mt-2">
+      {{ resetStatus.message }} ({{ resetStatus.done }}/{{ resetStatus.total }})
+    </div>
+  </div>
+</div>
 
     </div>
   </div>
@@ -557,6 +598,8 @@
       const adminZeroUsers = ref([]);
       const adminTargetUserId = ref('');
       const adminMatchList = ref([]);
+      const resetStatus = ref({ visible: false, total: 0, done: 0, progress: 0, message: '' });
+
 
       // lists
       const exchangeList = ref([]);
@@ -1138,6 +1181,75 @@
         }
       };
 
+      const adminResetAllUsers = async () => {
+  if (!isAdmin.value) return;
+
+  if (!confirm("⚠️ 전체 유저 카드/교환정보를 초기화합니다.\n복구 불가!\n\n진행할까요?")) return;
+
+  const confirmText = prompt("안전 확인!\n아래 문구를 그대로 입력하면 진행됩니다.\n\nRESET");
+  if (confirmText !== "RESET") {
+    alert("취소됨 (문구 불일치)");
+    return;
+  }
+
+  if (!confirm("마지막 확인: 정말 실행합니다.\n(전체 유저 데이터가 초기화됩니다)")) return;
+
+  isLoading.value = true;
+  resetStatus.value = { visible: true, total: 0, done: 0, progress: 0, message: '유저 목록 불러오는 중...' };
+
+  try {
+    const today = getGameDate();
+    const zero = Array(81).fill(0);
+    const now = firebase.firestore.FieldValue.serverTimestamp();
+
+    const snap = await db.collection('users').get();
+    const docs = [];
+    snap.forEach(d => {
+      const u = d.data();
+      if (!u) return;
+      if (u.role === 'admin') return; // ✅ 관리자는 제외
+      docs.push({ id: d.id });
+    });
+
+    resetStatus.value.total = docs.length;
+    resetStatus.value.message = '초기화 진행 중...';
+
+    const chunkSize = 450; // batch limit 안전하게
+    let done = 0;
+
+    for (let i = 0; i < docs.length; i += chunkSize) {
+      const batch = db.batch();
+      const chunk = docs.slice(i, i + chunkSize);
+
+      chunk.forEach(item => {
+        const refDoc = db.collection('users').doc(item.id);
+        batch.update(refDoc, {
+          collection: zero,
+          dailyExchangeCount: 0,
+          dailyExchangeDate: today,
+          lastUpdated: now
+        });
+      });
+
+      await batch.commit();
+
+      done += chunk.length;
+      resetStatus.value.done = done;
+      resetStatus.value.progress = docs.length ? Math.round((done / docs.length) * 100) : 100;
+      resetStatus.value.message = '초기화 진행 중...';
+    }
+
+    alert(`초기화 완료 ✅\n대상 유저 ${docs.length}명`);
+    await fetchAdminData();
+  } catch (e) {
+    alert("초기화 실패: " + (e.message || e));
+  } finally {
+    isLoading.value = false;
+    setTimeout(() => { resetStatus.value.visible = false; }, 1500);
+  }
+};
+
+
       // login
       const handleLogin = async () => {
         if (isLoading.value) return;
@@ -1261,10 +1373,13 @@
         fetchAdminData, adminUserList, adminZeroUsers,
         adminTargetUserId, adminMatchList, calculateAdminMatches, executeAdminTransfer,
         adminDeleteUser,
-        appConfig
+        appConfig,
+        resetStatus,
+        adminResetAllUsers
       };
     }
   }).mount('#app');
 </script>
 </body>
 </html>
+
