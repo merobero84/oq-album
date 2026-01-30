@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>오피스퀸 앨범 교환소 (Pro)</title>
+  <title>오피스퀸 앨범 교환소</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -57,7 +57,7 @@
       <h1 class="text-lg font-extrabold text-yellow-400 leading-none">관리자 모드</h1>
       <div class="flex gap-2">
         <button @click="showAdminSettingsPopup = true" class="text-xs bg-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-600 btn-press flex items-center gap-1">
-          <i class="fas fa-cog"></i><span>설정/백업</span>
+          <i class="fas fa-cog"></i><span>설정</span>
         </button>
         <button @click="fetchAdminData" class="text-xs bg-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-600 btn-press flex items-center gap-1">
           <i class="fas fa-rotate"></i><span>새로고침</span>
@@ -81,6 +81,7 @@
     </div>
 
     <div class="flex-1 overflow-y-auto p-4 hide-scroll">
+
       <div v-if="adminTab==='transfer'">
         <div class="mb-6">
           <label class="block text-xs text-gray-400 mb-2">관리할 유저 선택 (받는 사람)</label>
@@ -90,49 +91,135 @@
               S{{ user.server }} {{ user.nickname }} ({{ user.totalCount }}/81)
             </option>
           </select>
+          <p class="text-[10px] text-gray-500 mt-2">* 관리자에서는 카드 0장 유저도 포함해 전체 로드됩니다.</p>
         </div>
+
         <div v-if="adminTargetUserId">
-          <h3 class="text-sm font-extrabold text-gray-300 mb-3 border-l-4 border-yellow-500 pl-2">발견된 잉여 자원</h3>
-          <div v-if="adminMatchList.length === 0" class="text-center py-10 text-gray-500 bg-gray-800 rounded-lg">줄 수 있는 카드가 없어요!</div>
+          <h3 class="text-sm font-extrabold text-gray-300 mb-3 border-l-4 border-yellow-500 pl-2">
+            발견된 잉여 자원 (줄 수 있는 사람들)
+          </h3>
+
+          <div v-if="adminMatchList.length === 0" class="text-center py-10 text-gray-500 bg-gray-800 rounded-lg border border-gray-700">
+            <div class="text-2xl mb-2">🤷‍♂️</div>
+            줄 수 있는 카드가 없거나,<br>이미 다 모으셨네요!
+          </div>
+
           <div v-else class="space-y-3">
             <div v-for="(match, idx) in adminMatchList" :key="idx" class="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-lg">
               <div class="flex justify-between items-start mb-3">
-                <div><span class="text-xs text-blue-400 font-extrabold block mb-1">주는 사람</span><span class="text-lg font-extrabold">S{{ match.user.server }} {{ match.user.nickname }}</span></div>
-                <button @click="executeAdminTransfer(match)" class="bg-yellow-500 hover:bg-yellow-600 text-black font-extrabold px-4 py-2 rounded text-xs shadow-md btn-press"><i class="fas fa-bolt mr-1"></i> {{ match.giveable.length }}장 가져오기</button>
+                <div>
+                  <span class="text-xs text-blue-400 font-extrabold block mb-1">주는 사람</span>
+                  <span class="text-lg font-extrabold">S{{ match.user.server }} {{ match.user.nickname }}</span>
+                </div>
+                <button @click="executeAdminTransfer(match)"
+                        class="bg-yellow-500 hover:bg-yellow-600 text-black font-extrabold px-4 py-2 rounded text-xs shadow-md transition flex items-center btn-press">
+                  <i class="fas fa-bolt mr-1"></i> {{ match.giveable.length }}장 가져오기
+                </button>
               </div>
-              <div class="bg-gray-900 rounded p-2 text-xs text-gray-200"><div class="flex flex-wrap gap-1"><span v-for="(card, cIdx) in match.giveable" :key="cIdx" class="bg-gray-700 px-2 py-1 rounded border border-gray-600">{{ card.name }}</span></div></div>
+
+              <div class="bg-gray-900 rounded p-2 text-xs text-gray-200">
+                <div class="flex flex-wrap gap-1">
+                  <span v-for="(card, cIdx) in match.giveable" :key="cIdx"
+                        class="bg-gray-700 text-gray-100 px-2 py-1 rounded border border-gray-600">
+                    {{ card.name }}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
+        </div>
+
+        <div v-else class="text-center py-16 text-gray-500">
+          <i class="fas fa-user-cog text-4xl mb-4"></i><br>
+          유저를 선택하면<br><b>카드 몰아주기</b>가 가능합니다.
         </div>
       </div>
 
       <div v-else-if="adminTab==='users'">
-        <div class="bg-gray-800 border border-gray-700 rounded-xl p-4 mb-4"><div class="text-sm font-extrabold mb-1">🧹 잘못 가입된 유저 정리</div><div class="text-[11px] text-gray-300">카드 0장 유저만 보여요.</div></div>
+        <div class="bg-gray-800 border border-gray-700 rounded-xl p-4 mb-4">
+          <div class="text-sm font-extrabold mb-1">🧹 잘못 가입된 유저 정리</div>
+          <div class="text-[11px] text-gray-300 leading-relaxed">
+            아래 리스트는 <b class="text-yellow-300">카드 0장</b> 유저만 보여요.<br>
+            여기서 <b>삭제</b>만 가능합니다.
+          </div>
+        </div>
+
         <div v-if="isLoading" class="flex justify-center py-10"><div class="loader"></div></div>
+
         <div v-else class="space-y-2">
           <div v-for="u in adminZeroUsers" :key="u.id" class="bg-gray-800 border border-gray-700 rounded-xl p-3 flex items-center justify-between">
-            <div class="flex flex-col"><div class="font-extrabold text-sm"><span class="text-[10px] bg-blue-900/60 text-blue-200 px-2 py-0.5 rounded mr-2">S{{ u.server }}</span>{{ u.nickname }}</div><div class="text-[10px] text-gray-400 mt-1">{{ getActiveText(u.lastActive) }}</div></div>
-            <button @click="adminDeleteUser(u)" class="text-[11px] bg-red-500 hover:bg-red-600 px-3 py-2 rounded-lg font-extrabold btn-press">삭제</button>
+            <div class="flex flex-col">
+              <div class="font-extrabold text-sm">
+                <span class="text-[10px] bg-blue-900/60 text-blue-200 px-2 py-0.5 rounded mr-2">S{{ u.server }}</span>
+                {{ u.nickname }}
+              </div>
+              <div class="text-[10px] text-gray-400 mt-1">마지막 활동: {{ getActiveText(u.lastActive) }}</div>
+            </div>
+
+            <button @click="adminDeleteUser(u)"
+                    class="text-[11px] bg-red-500 hover:bg-red-600 px-3 py-2 rounded-lg font-extrabold btn-press">
+              삭제
+            </button>
           </div>
-          <div v-if="adminZeroUsers.length===0" class="text-center text-gray-400 py-14 bg-gray-800 rounded-xl border border-gray-700">카드 0장 유저가 없어요!</div>
+
+          <div v-if="adminZeroUsers.length===0" class="text-center text-gray-400 py-14 bg-gray-800 rounded-xl border border-gray-700">
+            <div class="text-2xl mb-2">✅</div>
+            카드 0장 유저가 없어요!
+          </div>
         </div>
       </div>
 
-      <div v-else>
+      <div v-else class="space-y-4">
         <div class="bg-gray-800 border border-gray-700 rounded-xl p-4">
-          <div class="flex items-center gap-2 mb-2"><span class="text-xl">🔥</span><div class="text-sm font-extrabold text-white">시즌 이벤트 초기화</div></div>
-          <div class="text-[11px] text-gray-300 mb-3"><span class="text-red-400 font-extrabold">※ 복구 불가! 백업 후 진행하세요.</span></div>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-xl">🔥</span>
+            <div class="text-sm font-extrabold text-white">시즌 이벤트 초기화 (새 게임 시작)</div>
+          </div>
+          <div class="text-[11px] text-gray-300 leading-relaxed mb-3">
+            모든 일반 유저의 데이터를 초기화합니다.<br>
+            <span class="text-yellow-400 font-bold">카드 컬렉션, 교환 횟수</span>가 모두 0이 됩니다.<br>
+            <span class="text-red-400 font-extrabold underline">※ 복구가 불가능하니 신중하게 사용하세요.</span>
+          </div>
+
+          <div class="bg-gray-900/50 rounded-lg p-3 border border-gray-600">
+            <div class="text-[10px] text-gray-400 mb-1 font-bold">초기화 항목</div>
+            <ul class="text-[11px] text-gray-200 space-y-1 list-disc list-inside">
+              <li>모든 카드 수량 → 0개</li>
+              <li>오늘 교환 횟수 → 0회</li>
+              <li>마지막 활동 시간 → 현재 시간 갱신</li>
+            </ul>
+          </div>
         </div>
-        <button @click="adminResetAllUsers()" class="w-full mt-4 bg-gradient-to-r from-red-600 to-red-500 text-white font-extrabold py-4 rounded-xl btn-press shadow-lg" :disabled="isLoading">전체 유저 초기화 실행</button>
-        <div v-if="resetStatus.visible" class="mt-4 bg-gray-800 border border-gray-700 rounded-xl p-4 animate-pulse">
-            <div class="w-full h-4 bg-gray-700 rounded-full overflow-hidden"><div class="h-full bg-yellow-500 gauge-fill" :style="{ width: resetStatus.progress + '%' }"></div></div>
-            <div class="text-[11px] text-gray-400 mt-2 text-center">{{ resetStatus.message }} ({{ resetStatus.done }}/{{ resetStatus.total }})</div>
+
+        <button
+          @click="adminResetAllUsers()"
+          class="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-extrabold py-4 rounded-xl btn-press shadow-lg flex items-center justify-center gap-2 transition"
+          :disabled="isLoading"
+          :class="isLoading ? 'opacity-50 cursor-not-allowed' : ''"
+        >
+          <i class="fas fa-exclamation-triangle"></i>
+          <span>전체 유저 초기화 실행</span>
+        </button>
+
+        <div v-if="resetStatus.visible" class="bg-gray-800 border border-gray-700 rounded-xl p-4 animate-pulse">
+          <div class="flex justify-between text-xs text-gray-300 font-extrabold mb-2">
+            <span>진행 중...</span>
+            <span>{{ resetStatus.progress }}%</span>
+          </div>
+          <div class="w-full h-4 bg-gray-700 rounded-full overflow-hidden border border-gray-600 relative">
+            <div class="h-full bg-yellow-500 gauge-fill transition-all duration-300" :style="{ width: resetStatus.progress + '%' }"></div>
+          </div>
+          <div class="text-[11px] text-gray-400 mt-2 text-center">
+            {{ resetStatus.message }} ({{ resetStatus.done }} / {{ resetStatus.total }}명)
+          </div>
         </div>
       </div>
+
     </div>
   </div>
 
   <div v-else class="flex flex-col h-screen bg-[#f0f9ff]">
+
     <div class="sticky top-0 bg-white/90 backdrop-blur-sm z-20 border-b border-blue-100 p-3 shadow-sm flex-none">
       <div class="flex justify-between items-center mb-2">
         <div class="flex flex-col">
@@ -141,17 +228,19 @@
             {{ userData.nickname }}님
           </span>
           <span class="text-[10px] font-bold mt-1" :class="tradeCount >= 3 ? 'text-red-500' : 'text-green-600'">
-            <i class="fas fa-sync-alt mr-1"></i> 오늘 교환 {{ tradeCount }}/3
+            <i class="fas fa-sync-alt mr-1"></i>
+            오늘 교환 {{ tradeCount }}/3 {{ tradeCount >= 3 ? '(마감)' : '' }}
           </span>
         </div>
+
         <div class="flex gap-2 items-center">
           <button @click="showHelpPopup = true" class="text-gray-400 hover:text-blue-500"><i class="fas fa-question-circle text-lg"></i></button>
-          <button @click="openHistoryPopup" class="text-xs bg-gray-600 text-white px-2.5 py-1.5 rounded-lg font-extrabold shadow-sm hover:bg-gray-700 transition btn-press">📜 기록</button>
           <button @click="openNeedsPopup" class="text-xs bg-pink-500 text-white px-2.5 py-1.5 rounded-lg font-extrabold shadow-sm hover:bg-pink-600 transition btn-press">🧾 구해요</button>
           <button @click="fetchUsersAndShowList" class="text-xs bg-blue-500 text-white px-2.5 py-1.5 rounded-lg font-extrabold shadow-sm hover:bg-blue-600 transition btn-press">👥 멤버</button>
           <button @click="logout" class="text-xs text-gray-400 border border-gray-200 px-2 py-1 rounded hover:bg-gray-50 btn-press">나가기</button>
         </div>
       </div>
+
       <div class="relative w-full h-7 bg-gray-200 rounded-full shadow-inner overflow-hidden border border-gray-300">
         <div class="absolute top-0 left-0 h-full bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400 gauge-fill" :style="{ width: totalProgress + '%' }"></div>
         <div class="absolute inset-0 flex items-center justify-center text-xs font-extrabold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] z-10">
@@ -166,9 +255,13 @@
           <div class="w-20 h-20 rounded-full border-4 border-white shadow-lg overflow-hidden relative bg-white group-hover:scale-105 transition duration-200 ring-2 ring-gray-100">
             <img v-if="appConfig.albumCovers && appConfig.albumCovers[idx]" :src="appConfig.albumCovers[idx]" class="w-full h-full object-cover">
             <div v-else class="w-full h-full flex items-center justify-center bg-blue-50 text-3xl text-blue-200">📁</div>
-            <div v-if="getAlbumCount(idx) === 9" class="absolute inset-0 bg-black/30 flex items-center justify-center"><i class="fas fa-check text-2xl text-green-400 drop-shadow-md"></i></div>
+            <div v-if="getAlbumCount(idx) === 9" class="absolute inset-0 bg-black/30 flex items-center justify-center">
+              <i class="fas fa-check text-2xl text-green-400 drop-shadow-md"></i>
+            </div>
           </div>
-          <div class="mt-2 mb-1 px-2 py-0.5 rounded bg-white/50 backdrop-blur-sm"><span class="text-[11px] font-bold text-gray-700 text-center block truncate max-w-[80px]">{{ album }}</span></div>
+          <div class="mt-2 mb-1 px-2 py-0.5 rounded bg-white/50 backdrop-blur-sm">
+            <span class="text-[11px] font-bold text-gray-700 text-center block truncate max-w-[80px]">{{ album }}</span>
+          </div>
           <div class="w-20 h-4 bg-gray-600 rounded-full relative border border-white shadow-sm overflow-hidden">
             <div class="h-full bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full gauge-fill" :style="{ width: (getAlbumCount(idx) / 9) * 100 + '%' }"></div>
             <span class="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]">{{ getAlbumCount(idx) }}/9</span>
@@ -182,13 +275,23 @@
           <h2 class="text-sm font-bold text-gray-800">{{ appConfig.albumNames[currentAlbumIdx] }}</h2>
           <button @click="nextAlbum" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 btn-press text-gray-600"><i class="fas fa-chevron-right"></i></button>
         </div>
+
         <div class="grid grid-cols-3 gap-1.5">
           <div v-for="(count, i) in currentAlbumCards" :key="i" class="bg-white rounded-lg p-1.5 shadow-sm border border-gray-100 flex flex-col h-28 relative">
-            <div class="flex-1 bg-gray-50 rounded mb-1.5 relative overflow-hidden cursor-pointer border border-gray-200 group" @click="onCardTap(i)"
-                 @touchstart.passive="onCardHoldStart(i)" @touchend="onCardHoldEnd">
-              <div class="absolute inset-0 flex flex-col items-center justify-center text-gray-300"><span class="text-[9px]">사진</span><span class="text-xs font-bold">{{ i + 1 }}</span></div>
-              <div v-if="count === 0" class="absolute inset-0 bg-white/90 flex flex-col items-center justify-center text-red-500 font-bold z-10 group-hover:bg-white/70 transition"><i class="fas fa-search text-lg mb-1"></i><span class="text-[9px]">구해요</span></div>
+            <div class="flex-1 bg-gray-50 rounded mb-1.5 relative overflow-hidden cursor-pointer border border-gray-200 group"
+                 @click="onCardTap(i)"
+                 @mousedown="onCardHoldStart(i)" @mouseup="onCardHoldEnd" @mouseleave="onCardHoldEnd"
+                 @touchstart.passive="onCardHoldStart(i)" @touchend="onCardHoldEnd" @touchcancel="onCardHoldEnd">
+              <div class="absolute inset-0 flex flex-col items-center justify-center text-gray-300">
+                <span class="text-[9px]">사진</span><span class="text-xs font-bold">{{ i + 1 }}</span>
+              </div>
+
+              <div v-if="count === 0" class="absolute inset-0 bg-white/90 flex flex-col items-center justify-center text-red-500 font-bold z-10 group-hover:bg-white/70 transition">
+                <i class="fas fa-search text-lg mb-1"></i><span class="text-[9px]">구해요</span>
+                <span class="text-[9px] mt-1 text-gray-400 font-extrabold">(탭하면 보유자)</span>
+              </div>
             </div>
+
             <div class="flex items-center justify-between bg-gray-50 rounded-full p-0.5 border border-gray-200">
               <button @click="updateCount(i, -1)" class="w-5 h-5 rounded-full bg-white shadow-sm text-gray-500 flex items-center justify-center text-xs border border-gray-200 btn-press font-bold">-</button>
               <span class="flex-1 text-center text-xs font-bold" :class="count > 0 ? 'text-blue-600' : 'text-gray-300'">{{ count }}</span>
@@ -196,7 +299,12 @@
             </div>
           </div>
         </div>
-        <div class="mt-6 flex justify-center"><button @click="currentView = 'dashboard'" class="px-6 py-2 bg-gray-800 text-white text-xs rounded-full font-bold shadow-lg hover:bg-gray-700 transition flex items-center btn-press"><i class="fas fa-th-large mr-2"></i> 앨범 목록으로</button></div>
+
+        <div class="mt-6 flex justify-center">
+          <button @click="currentView = 'dashboard'" class="px-6 py-2 bg-gray-800 text-white text-xs rounded-full font-bold shadow-lg hover:bg-gray-700 transition flex items-center btn-press">
+            <i class="fas fa-th-large mr-2"></i> 앨범 목록으로
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -204,7 +312,11 @@
   <div v-if="showUserListPopup" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" @click.self="showUserListPopup = false">
     <div class="bg-white rounded-2xl w-full max-w-sm p-5 relative max-h-[86vh] overflow-y-auto shadow-2xl hide-scroll">
       <button @click="showUserListPopup = false" class="absolute top-4 right-4 text-gray-300 hover:text-gray-500"><i class="fas fa-times"></i></button>
-      <div class="flex items-center justify-between mb-3"><h3 class="text-base font-extrabold text-gray-800">👥 활동 멤버 <span class="text-blue-500">{{ filteredUserList.length }}명</span></h3></div>
+
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-base font-extrabold text-gray-800">👥 활동 멤버 <span class="text-blue-500">{{ filteredUserList.length }}명</span></h3>
+      </div>
+
       <div class="grid grid-cols-5 gap-2 mb-3">
         <button class="tab-btn" :class="memberFilter==='all'?'tab-on':'tab-off'" @click="memberFilter='all'">전체</button>
         <button class="tab-btn" :class="memberFilter==='winwin'?'tab-on':'tab-off'" @click="memberFilter='winwin'">윈윈</button>
@@ -212,46 +324,43 @@
         <button class="tab-btn" :class="memberFilter==='give'?'tab-on':'tab-off'" @click="memberFilter='give'">주기</button>
         <button class="tab-btn" :class="memberFilter==='fav'?'tab-on':'tab-off'" @click="memberFilter='fav'">⭐</button>
       </div>
-      <div class="mb-3 relative"><input v-model="searchKeyword" type="text" placeholder="닉네임/서버 검색" class="w-full p-2.5 pl-9 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-100 transition"><i class="fas fa-search absolute left-3 top-3 text-gray-400 text-xs"></i></div>
+
+      <div class="mb-3 relative">
+        <input v-model="searchKeyword" type="text" placeholder="닉네임/서버 검색" class="w-full p-2.5 pl-9 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-100 transition">
+        <i class="fas fa-search absolute left-3 top-3 text-gray-400 text-xs"></i>
+      </div>
+
       <div v-if="isLoading" class="flex justify-center py-8"><div class="loader"></div></div>
+
       <div v-else class="space-y-2">
         <div v-for="user in filteredUserList" :key="user.id" class="border border-gray-100 p-3 rounded-xl flex justify-between items-center hover:bg-blue-50 hover:border-blue-100 transition group">
           <div class="flex items-center flex-1 cursor-pointer" @click="openCompare(user)">
             <div class="w-2 h-2 rounded-full mr-2" :class="getActiveColor(user.lastActive)"></div>
             <span class="bg-blue-100 text-blue-600 text-[10px] px-1.5 py-0.5 rounded font-bold mr-2">S{{ user.server }}</span>
             <div class="flex flex-col flex-1 min-w-0">
-              <div class="flex items-center"><span class="font-extrabold text-gray-700 text-sm group-hover:text-blue-600 truncate mr-1">{{ user.nickname }}</span><i v-if="user.totalCount >= 81" class="fas fa-trophy text-yellow-500 text-xs"></i></div>
+              <div class="flex items-center">
+                <span class="font-extrabold text-gray-700 text-sm group-hover:text-blue-600 truncate mr-1">
+                  {{ user.nickname }}
+                </span>
+                <i v-if="user.totalCount >= 81" class="fas fa-trophy text-yellow-500 text-xs"></i>
+              </div>
               <div class="flex items-center gap-2 mt-0.5">
-                <span class="text-[9px] text-gray-400">{{ getActiveText(user.lastActive) }}</span>
+                <span class="text-[9px] text-gray-400"><i class="fas fa-history mr-0.5"></i>{{ getActiveText(user.lastActive) }}</span>
+                <span class="text-[10px] px-1.5 rounded-full" :class="user.totalCount >= 40 ? 'bg-pink-100 text-pink-600 font-extrabold' : 'bg-gray-100 text-gray-500'">{{ user.totalCount || 0 }}/81</span>
                 <span v-if="user.match.winwin" class="text-[10px] bg-red-100 text-red-600 font-extrabold px-1.5 py-0.5 rounded-full">윈윈</span>
+                <span v-else-if="user.match.receive" class="text-[10px] bg-green-100 text-green-700 font-extrabold px-1.5 py-0.5 rounded-full">받기</span>
+                <span v-else-if="user.match.give" class="text-[10px] bg-blue-100 text-blue-700 font-extrabold px-1.5 py-0.5 rounded-full">주기</span>
               </div>
             </div>
           </div>
-          <button @click.stop="toggleFavorite(user.id)" class="w-9 h-9 rounded-xl flex items-center justify-center border border-gray-200 hover:bg-yellow-50 btn-press"><i class="fas fa-star" :class="isFavorite(user.id) ? 'text-yellow-400' : 'text-gray-300'"></i></button>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <div v-if="showHistoryPopup" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" @click.self="showHistoryPopup = false">
-    <div class="bg-white rounded-2xl w-full max-w-sm p-5 relative max-h-[85vh] overflow-y-auto shadow-2xl hide-scroll">
-      <button @click="showHistoryPopup = false" class="absolute top-4 right-4 text-gray-300 hover:text-gray-500"><i class="fas fa-times"></i></button>
-      <h3 class="text-lg font-extrabold text-gray-800 mb-4">📜 나의 교환 기록</h3>
-      <div v-if="historyLoading" class="flex justify-center py-10"><div class="loader"></div></div>
-      <div v-else-if="historyList.length === 0" class="text-center text-gray-400 py-10 bg-gray-50 rounded-xl">아직 교환 기록이 없어요!</div>
-      <div v-else class="space-y-2">
-        <div v-for="(log, idx) in historyList" :key="idx" class="border border-gray-100 p-3 rounded-xl bg-gray-50/50">
-          <div class="flex justify-between items-start">
-            <div class="flex flex-col">
-              <span class="text-[10px] text-gray-400 mb-0.5">{{ formatLogDate(log.timestamp) }}</span>
-              <div class="text-sm font-bold text-gray-700">
-                <span :class="log.type === 'give' ? 'text-blue-600' : 'text-red-500'">{{ log.type === 'give' ? '보냄' : '받음' }}</span>
-                <span class="mx-1 text-gray-400">→</span>
-                <span>S{{ log.targetServer }} {{ log.targetNickname }}</span>
-              </div>
-            </div>
-            <span class="text-xs font-extrabold bg-white border px-2 py-1 rounded">{{ log.cardName }}</span>
-          </div>
+          <button @click.stop="toggleFavorite(user.id)" class="w-9 h-9 rounded-xl flex items-center justify-center border border-gray-200 hover:bg-yellow-50 btn-press">
+            <i class="fas fa-star" :class="isFavorite(user.id) ? 'text-yellow-400' : 'text-gray-300'"></i>
+          </button>
+        </div>
+
+        <div v-if="filteredUserList.length === 0" class="text-center text-gray-400 py-8 text-xs bg-gray-50 rounded-xl">
+          {{ searchKeyword ? '검색된 멤버가 없어요.' : '필터 조건에 맞는 멤버가 없어요.' }}
         </div>
       </div>
     </div>
@@ -260,29 +369,68 @@
   <div v-if="showComparePopup" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" @click.self="showComparePopup = false">
     <div class="bg-white rounded-2xl w-full max-w-sm p-5 relative max-h-[85vh] overflow-y-auto shadow-2xl hide-scroll">
       <button @click="showComparePopup = false" class="absolute top-3 right-3 text-gray-300 hover:text-gray-500"><i class="fas fa-times"></i></button>
-      <div class="text-center mb-5 mt-2"><div class="text-xs text-gray-400 mb-1">나 vs 상대방</div><h3 class="text-lg font-extrabold text-gray-800 flex justify-center items-center">S{{ compareTarget.server }} {{ compareTarget.nickname }}</h3></div>
+
+      <div class="text-center mb-5 mt-2">
+        <div class="text-xs text-gray-400 mb-1">나 vs 상대방</div>
+        <h3 class="text-lg font-extrabold text-gray-800 flex justify-center items-center">
+          S{{ compareTarget.server }} {{ compareTarget.nickname }}
+        </h3>
+      </div>
+
       <div v-if="isLoading" class="flex justify-center py-8"><div class="loader"></div></div>
+
       <div v-else class="space-y-3">
         <div v-if="compareResult.mutual.give.length > 0 || compareResult.mutual.receive.length > 0" class="bg-red-50 p-3 rounded-xl border border-red-100">
           <h4 class="font-extrabold text-red-500 text-xs mb-2 flex items-center"><i class="fas fa-heart mr-1"></i> 윈윈 (서로 필요해!)</h4>
+
           <div class="space-y-1.5">
             <div v-for="(card, idx) in compareResult.mutual.give" :key="'m_g_'+idx" class="flex justify-between items-center bg-white p-2 rounded-lg text-xs shadow-sm border border-red-50">
               <span class="truncate max-w-[55%] text-gray-600">내가 <span class="font-extrabold text-blue-500">줌</span>: {{ card.name }}</span>
-              <div class="flex gap-1"><button @click="copyTradeText(card, 'give')" class="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200 btn-press">복사</button><button @click="executeTrade(card, 'give')" class="text-[10px] bg-blue-500 text-white px-2 py-1 rounded shadow-sm" :disabled="tradeCount>=3">보내기</button></div>
+              <div class="flex gap-1">
+                <button @click="copyTradeText(card, 'give')" class="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200 btn-press"><i class="far fa-copy"></i> 복사</button>
+                <button @click="executeTrade(card, 'give')" class="text-[10px] bg-blue-500 text-white px-2 py-1 rounded shadow-sm" :class="{'btn-disabled': tradeCount >= 3}" :disabled="tradeCount >= 3">보내기</button>
+              </div>
             </div>
+
             <div v-for="(card, idx) in compareResult.mutual.receive" :key="'m_r_'+idx" class="flex justify-between items-center bg-white p-2 rounded-lg text-xs shadow-sm border border-red-50">
               <span class="truncate max-w-[55%] text-gray-600">내가 <span class="font-extrabold text-red-500">받음</span>: {{ card.name }}</span>
-              <div class="flex gap-1"><button @click="copyTradeText(card, 'receive')" class="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200 btn-press">복사</button><button @click="executeTrade(card, 'receive')" class="text-[10px] bg-red-500 text-white px-2 py-1 rounded shadow-sm" :disabled="tradeCount>=3">받기</button></div>
+              <div class="flex gap-1">
+                <button @click="copyTradeText(card, 'receive')" class="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200 btn-press"><i class="far fa-copy"></i> 복사</button>
+                <button @click="executeTrade(card, 'receive')" class="text-[10px] bg-red-500 text-white px-2 py-1 rounded shadow-sm" :class="{'btn-disabled': tradeCount >= 3}" :disabled="tradeCount >= 3">받기</button>
+              </div>
             </div>
           </div>
         </div>
+
         <div v-if="compareResult.giveOnly.length > 0" class="bg-blue-50 p-3 rounded-xl border border-blue-100">
           <h4 class="font-extrabold text-blue-500 text-xs mb-2 flex items-center"><i class="fas fa-gift mr-1"></i> 기부 가능 (나는 남아요)</h4>
-          <div class="space-y-1.5"><div v-for="(card, idx) in compareResult.giveOnly" :key="'g_'+idx" class="flex justify-between items-center bg-white p-2 rounded-lg text-xs shadow-sm border border-blue-50"><span class="text-gray-600 truncate max-w-[55%]">{{ card.name }}</span><div class="flex gap-1"><button @click="copyTradeText(card, 'give')" class="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200 btn-press">복사</button><button @click="executeTrade(card, 'give')" class="text-[10px] bg-blue-500 text-white px-2 py-1 rounded shadow-sm" :disabled="tradeCount>=3">보내기</button></div></div></div>
+          <div class="space-y-1.5">
+            <div v-for="(card, idx) in compareResult.giveOnly" :key="'g_'+idx" class="flex justify-between items-center bg-white p-2 rounded-lg text-xs shadow-sm border border-blue-50">
+              <span class="text-gray-600 truncate max-w-[55%]">{{ card.name }}</span>
+              <div class="flex gap-1">
+                <button @click="copyTradeText(card, 'give')" class="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200 btn-press"><i class="far fa-copy"></i> 복사</button>
+                <button @click="executeTrade(card, 'give')" class="text-[10px] bg-blue-500 text-white px-2 py-1 rounded shadow-sm" :class="{'btn-disabled': tradeCount >= 3}" :disabled="tradeCount >= 3">보내기</button>
+              </div>
+            </div>
+          </div>
         </div>
+
         <div v-if="compareResult.receiveOnly.length > 0" class="bg-gray-100 p-3 rounded-xl border border-gray-200">
           <h4 class="font-extrabold text-gray-500 text-xs mb-2 flex items-center"><i class="fas fa-hand-holding mr-1"></i> 구해요 (상대는 남아요)</h4>
-          <div class="space-y-1.5"><div v-for="(card, idx) in compareResult.receiveOnly" :key="'r_'+idx" class="flex justify-between items-center bg-white p-2 rounded-lg text-xs shadow-sm border border-gray-100"><span class="text-gray-600 truncate max-w-[55%]">{{ card.name }}</span><div class="flex gap-1"><button @click="copyTradeText(card, 'receive')" class="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200 btn-press">복사</button><button @click="executeTrade(card, 'receive')" class="text-[10px] bg-green-500 text-white px-2 py-1 rounded shadow-sm" :disabled="tradeCount>=3">받기</button></div></div></div>
+          <div class="space-y-1.5">
+            <div v-for="(card, idx) in compareResult.receiveOnly" :key="'r_'+idx" class="flex justify-between items-center bg-white p-2 rounded-lg text-xs shadow-sm border border-gray-100">
+              <span class="text-gray-600 truncate max-w-[55%]">{{ card.name }}</span>
+              <div class="flex gap-1">
+                <button @click="copyTradeText(card, 'receive')" class="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200 btn-press"><i class="far fa-copy"></i> 복사</button>
+                <button @click="executeTrade(card, 'receive')" class="text-[10px] bg-green-500 text-white px-2 py-1 rounded shadow-sm" :class="{'btn-disabled': tradeCount >= 3}" :disabled="tradeCount >= 3">받기</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="compareResult.giveOnly.length === 0 && compareResult.receiveOnly.length === 0 && compareResult.mutual.give.length === 0 && compareResult.mutual.receive.length === 0"
+             class="text-center text-gray-400 text-xs py-8 bg-gray-50 rounded-xl">
+          교환할 수 있는 카드가 없어요 😅
         </div>
       </div>
     </div>
@@ -293,15 +441,27 @@
       <button @click="showPopup = false" class="absolute top-4 right-4 text-gray-300 hover:text-gray-500"><i class="fas fa-times"></i></button>
       <h3 class="text-lg font-extrabold mb-1 text-gray-800">🤝 교환 도우미</h3>
       <p class="text-xs text-gray-500 mb-6 border-b pb-2"><span class="text-pink-600 font-extrabold">{{ popupCardName }}</span> 보유자 찾기</p>
+
       <div v-if="isLoading" class="flex justify-center py-8"><div class="loader"></div></div>
-      <div v-else-if="exchangeList.length === 0" class="text-center py-8 text-gray-400 bg-gray-50 rounded-xl"><div class="text-2xl mb-2">😭</div>여유분 있는 친구가 없어요</div>
+
+      <div v-else-if="exchangeList.length === 0" class="text-center py-8 text-gray-400 bg-gray-50 rounded-xl">
+        <div class="text-2xl mb-2">😭</div>여유분 있는 친구가 없어요
+      </div>
+
       <div v-else class="space-y-3 max-h-[55vh] overflow-y-auto pr-1 hide-scroll">
         <div v-for="user in exchangeList" :key="user.id" class="border border-gray-100 p-3 rounded-xl bg-white shadow-sm flex flex-col gap-2">
           <div class="flex justify-between items-center">
-            <div class="font-extrabold text-gray-700 text-sm"><span class="bg-blue-100 text-blue-600 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">S{{ user.server }}</span>{{ user.nickname }}</div>
+            <div class="font-extrabold text-gray-700 text-sm">
+              <span class="bg-blue-100 text-blue-600 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">S{{ user.server }}</span>{{ user.nickname }}
+            </div>
             <button @click="openCompare(user)" class="text-[10px] bg-gray-800 text-white px-2 py-1 rounded shadow-sm btn-press">전체 비교</button>
           </div>
-          <div v-if="user.giveable.length > 0" class="bg-blue-50 p-2 rounded-lg"><div class="text-[10px] text-blue-500 font-extrabold mb-1 flex items-center"><i class="fas fa-gift mr-1"></i> 내가 줄 수 있는 것:</div><div class="flex flex-wrap gap-1"><span v-for="(card, cIdx) in user.giveable" :key="cIdx" class="text-[9px] bg-white border border-blue-100 px-1.5 py-0.5 rounded text-gray-500">{{ card }}</span></div></div>
+          <div v-if="user.giveable.length > 0" class="bg-blue-50 p-2 rounded-lg">
+            <div class="text-[10px] text-blue-500 font-extrabold mb-1 flex items-center"><i class="fas fa-gift mr-1"></i> 내가 줄 수 있는 것(상대가 필요):</div>
+            <div class="flex flex-wrap gap-1">
+              <span v-for="(card, cIdx) in user.giveable" :key="cIdx" class="text-[9px] bg-white border border-blue-100 px-1.5 py-0.5 rounded text-gray-500">{{ card }}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -310,13 +470,35 @@
   <div v-if="showNeedsPopup" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" @click.self="showNeedsPopup = false">
     <div class="bg-white rounded-2xl w-full max-w-sm p-5 relative max-h-[85vh] overflow-y-auto shadow-2xl hide-scroll">
       <button @click="showNeedsPopup = false" class="absolute top-4 right-4 text-gray-300 hover:text-gray-500"><i class="fas fa-times"></i></button>
-      <div class="mb-4"><h3 class="text-lg font-extrabold text-gray-800">🧾 구해요 목록</h3><p class="text-xs text-gray-500 mt-1">0인 카드만 보여요. (여유분 보유자 수 표시)</p></div>
-      <div class="mb-3 relative"><input v-model="needsKeyword" type="text" placeholder="앨범명/사진번호 검색" class="w-full p-2.5 pl-9 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-pink-100 transition"><i class="fas fa-search absolute left-3 top-3 text-gray-400 text-xs"></i></div>
+
+      <div class="mb-4">
+        <h3 class="text-lg font-extrabold text-gray-800">🧾 구해요 목록</h3>
+        <p class="text-xs text-gray-500 mt-1">0인 카드만 보여요. (여유분 보유자 수 표시)</p>
+      </div>
+
+      <div class="mb-3 relative">
+        <input v-model="needsKeyword" type="text" placeholder="앨범명/사진번호 검색" class="w-full p-2.5 pl-9 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-pink-100 transition">
+        <i class="fas fa-search absolute left-3 top-3 text-gray-400 text-xs"></i>
+      </div>
+
       <div v-if="needsLoading" class="flex justify-center py-10"><div class="loader"></div></div>
-      <div v-else-if="needsListFiltered.length===0" class="text-center text-gray-400 py-10 bg-gray-50 rounded-xl">🎉 구해요가 없어요!</div>
+
+      <div v-else-if="needsListFiltered.length===0" class="text-center text-gray-400 py-10 bg-gray-50 rounded-xl">
+        🎉 구해요가 없어요!
+      </div>
+
       <div v-else class="space-y-2">
-        <button v-for="item in needsListFiltered" :key="item.index" @click="openExchangeByAbsoluteIndex(item.index)" class="w-full text-left border border-gray-100 p-3 rounded-xl hover:bg-pink-50 hover:border-pink-100 transition btn-press">
-          <div class="flex items-center justify-between gap-2"><div class="font-extrabold text-gray-800 text-sm truncate">{{ item.name }}</div><span class="text-[10px] px-2 py-1 rounded-full font-extrabold" :class="item.owners>0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'">보유자 {{ item.owners }}명</span></div>
+        <button v-for="item in needsListFiltered" :key="item.index"
+                @click="openExchangeByAbsoluteIndex(item.index)"
+                class="w-full text-left border border-gray-100 p-3 rounded-xl hover:bg-pink-50 hover:border-pink-100 transition btn-press">
+          <div class="flex items-center justify-between gap-2">
+            <div class="font-extrabold text-gray-800 text-sm truncate">{{ item.name }}</div>
+            <span class="text-[10px] px-2 py-1 rounded-full font-extrabold"
+                  :class="item.owners>0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'">
+              보유자 {{ item.owners }}명
+            </span>
+          </div>
+          <div class="text-[11px] text-gray-500 mt-1">탭하면 보유자 찾기</div>
         </button>
       </div>
     </div>
@@ -324,39 +506,69 @@
 
   <div v-if="showAdminSettingsPopup" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" @click.self="showAdminSettingsPopup = false">
     <div class="bg-white rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto hide-scroll shadow-2xl">
-      <div class="flex justify-between items-center mb-4"><h2 class="text-lg font-extrabold text-gray-800">⚙️ 설정 및 백업</h2><button @click="showAdminSettingsPopup = false" class="text-gray-400 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button></div>
-      <div class="space-y-4 border-b pb-4 mb-4">
-        <h3 class="text-sm font-extrabold text-gray-600">데이터 백업/복구 (JSON)</h3>
-        <div class="flex gap-2">
-          <button @click="backupData" class="flex-1 bg-green-500 text-white py-2 rounded-lg font-bold text-xs shadow btn-press"><i class="fas fa-download mr-1"></i> 전체 백업 (다운로드)</button>
-          <label class="flex-1 bg-blue-500 text-white py-2 rounded-lg font-bold text-xs shadow btn-press text-center cursor-pointer">
-            <i class="fas fa-upload mr-1"></i> 데이터 복구
-            <input type="file" @change="restoreData" class="hidden" accept=".json">
-          </label>
-        </div>
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-extrabold text-gray-800">⚙️ 이벤트 설정</h2>
+        <button @click="showAdminSettingsPopup = false" class="text-gray-400 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
       </div>
+
       <div class="space-y-4">
-        <h3 class="text-sm font-extrabold text-gray-600">앨범 이름 설정</h3>
         <div v-for="(name, idx) in appConfig.albumNames" :key="idx" class="border-b pb-4">
           <label class="block text-sm font-extrabold text-gray-700 mb-2">앨범 {{ idx + 1 }}</label>
-          <div class="grid grid-cols-1 gap-2"><input v-model="appConfig.albumNames[idx]" type="text" class="w-full p-2 border rounded text-sm"><input v-model="appConfig.albumCovers[idx]" type="text" placeholder="이미지 주소" class="w-full p-2 border rounded text-sm text-gray-500"></div>
+          <div class="grid grid-cols-1 gap-2">
+            <input v-model="appConfig.albumNames[idx]" type="text" class="w-full p-2 border rounded text-sm">
+            <input v-model="appConfig.albumCovers[idx]" type="text" placeholder="이미지 주소" class="w-full p-2 border rounded text-sm text-gray-500">
+          </div>
         </div>
       </div>
-      <div class="mt-5 flex gap-2"><button @click="saveAppConfig" class="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl font-extrabold btn-press">저장</button><button @click="showAdminSettingsPopup=false" class="px-4 py-3 bg-gray-200 text-gray-700 rounded-xl font-extrabold btn-press">닫기</button></div>
+
+      <div class="mt-5 flex gap-2">
+        <button @click="saveAppConfig" class="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl font-extrabold btn-press">저장</button>
+        <button @click="showAdminSettingsPopup=false" class="px-4 py-3 bg-gray-200 text-gray-700 rounded-xl font-extrabold btn-press">닫기</button>
+      </div>
     </div>
   </div>
 
   <div v-if="showHelpPopup" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" @click.self="showHelpPopup = false">
     <div class="bg-white rounded-2xl w-full max-w-sm p-6 relative shadow-2xl">
       <button @click="showHelpPopup = false" class="absolute top-4 right-4 text-gray-300 hover:text-gray-500"><i class="fas fa-times text-xl"></i></button>
+      
       <h3 class="text-lg font-extrabold text-gray-800 mb-4 text-center">💡 사용 가이드</h3>
-      <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-6 text-center"><span class="text-red-600 font-extrabold text-xs block mb-1">⚠️ 주의사항 (필독)</span><p class="text-xs text-red-500 leading-tight">이 앱은 <b>장부</b>일 뿐입니다!<br><span class="font-bold">반드시 게임에서 먼저 교환하고</span> 버튼을 눌러주세요.</p></div>
-      <div class="space-y-4 mb-6">
-        <div class="flex gap-3"><div class="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-extrabold text-xs flex-none">1</div><div><h4 class="text-sm font-extrabold text-gray-700">카드 입력</h4><p class="text-xs text-gray-500 leading-snug">앨범에서 + - 로 수량 입력 (자동 저장)</p></div></div>
-        <div class="flex gap-3"><div class="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-extrabold text-xs flex-none">2</div><div><h4 class="text-sm font-extrabold text-gray-700">1:1 맞교환</h4><p class="text-xs text-gray-500 leading-snug">멤버 리스트에서 비교 > 누르면 교환 카드가 나옵니다.</p></div></div>
-        <div class="flex gap-3"><div class="w-6 h-6 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center font-extrabold text-xs flex-none">3</div><div><h4 class="text-sm font-extrabold text-gray-700">복사 & 붙여넣기</h4><p class="text-xs text-gray-500 leading-snug">복사 버튼을 눌러 게임 채팅창에 붙여넣으세요!</p></div></div>
+
+      <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-6 text-center">
+        <span class="text-red-600 font-extrabold text-xs block mb-1">⚠️ 주의사항 (필독)</span>
+        <p class="text-xs text-red-500 leading-tight">
+          이 앱은 <b class="underline">장부</b>일 뿐입니다!<br>
+          거래 버튼을 눌러도 게임 아이템은 이동하지 않아요.<br>
+          <span class="font-bold">반드시 게임에서 먼저 교환하고</span> 버튼을 눌러주세요.
+        </p>
       </div>
+
+      <div class="space-y-4 mb-6">
+        <div class="flex gap-3">
+          <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-extrabold text-xs flex-none">1</div>
+          <div>
+            <h4 class="text-sm font-extrabold text-gray-700">카드 입력</h4>
+            <p class="text-xs text-gray-500 leading-snug">앨범에서 + - 로 수량 입력 (자동 저장)</p>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <div class="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-extrabold text-xs flex-none">2</div>
+          <div>
+            <h4 class="text-sm font-extrabold text-gray-700">1:1 맞교환</h4>
+            <p class="text-xs text-gray-500 leading-snug">멤버 리스트에서 비교 > 누르면 교환 카드가 나옵니다.</p>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <div class="w-6 h-6 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center font-extrabold text-xs flex-none">3</div>
+          <div>
+            <h4 class="text-sm font-extrabold text-gray-700">복사 & 붙여넣기</h4>
+            <p class="text-xs text-gray-500 leading-snug">복사 버튼을 눌러 게임 채팅창에 붙여넣으세요!</p>
+          </div>
+        </div>
+      </div>
+
       <p class="text-center text-xs text-pink-500 mb-4">🚫 오류 제보 및 문의: <b>67섭 시소</b></p>
+
       <button @click="showHelpPopup = false" class="w-full bg-gray-800 text-white py-3 rounded-xl font-extrabold text-sm hover:bg-gray-700 btn-press">확인했습니다</button>
     </div>
   </div>
@@ -383,23 +595,27 @@
     setup() {
       const isLoggedIn = ref(false);
       const isLoading = ref(false);
+
       const currentView = ref('dashboard');
       const loginForm = ref({ server: '', nickname: '', password: '' });
+
       const userData = ref(null);
       const currentAlbumIdx = ref(0);
       const tradeCount = ref(0);
 
+      // popups
       const showPopup = ref(false);
       const showUserListPopup = ref(false);
       const showComparePopup = ref(false);
       const showHelpPopup = ref(false);
       const showNeedsPopup = ref(false);
-      const showHistoryPopup = ref(false);
 
+      // needs
       const needsKeyword = ref('');
       const needsLoading = ref(false);
       const spareOwnerCounts = ref(Array(81).fill(0));
 
+      // admin
       const showAdminSettingsPopup = ref(false);
       const adminTab = ref('transfer');
       const adminUserList = ref([]);
@@ -408,13 +624,13 @@
       const adminMatchList = ref([]);
       const resetStatus = ref({ visible: false, total: 0, done: 0, progress: 0, message: '' });
 
+      // lists
       const exchangeList = ref([]);
       const userList = ref([]);
       const compareTarget = ref({});
       const compareResult = ref({ mutual: { give: [], receive: [] }, giveOnly: [], receiveOnly: [] });
-      const historyList = ref([]);
-      const historyLoading = ref(false);
 
+      // search/filter
       const searchKeyword = ref('');
       const memberFilter = ref('all');
 
@@ -424,30 +640,22 @@
       });
 
       const isAdmin = computed(() => userData.value && userData.value.role === 'admin');
+
       const safeNick = (v) => (v || '').toString().trim();
       const safeServer = (v) => Number(v || 0);
 
-      // 🕒 한국 시간(KST) 강제 적용 (해외/타임존 이슈 방지)
       const getGameDate = () => {
         const now = new Date();
-        const kstTime = now.getTime() + (9 * 60 * 60 * 1000) + (now.getTimezoneOffset() * 60 * 1000);
-        const kstDate = new Date(kstTime);
-        if (kstDate.getHours() < 8) kstDate.setDate(kstDate.getDate() - 1);
-        return kstDate.toISOString().split('T')[0];
+        if (now.getHours() < 8) now.setDate(now.getDate() - 1);
+        return now.toISOString().split('T')[0];
       };
 
       const tsToDate = (timestamp) => {
         if (!timestamp) return null;
-        if (timestamp.toDate) return timestamp.toDate();
+        if (timestamp.toDate && typeof timestamp.toDate === 'function') return timestamp.toDate();
         if (timestamp instanceof Date) return timestamp;
         if (typeof timestamp === 'number') return new Date(timestamp);
         return null;
-      };
-
-      const formatLogDate = (timestamp) => {
-        const d = tsToDate(timestamp);
-        if (!d) return '-';
-        return d.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
       };
 
       const getActiveText = (timestamp) => {
@@ -481,16 +689,24 @@
         return `${albumName} - 사진${cIdx}`;
       };
 
-      const favKey = computed(() => userData.value ? `oq_fav_S${userData.value.server}_${userData.value.nickname}` : 'oq_fav_guest');
+      // favorites
+      const favKey = computed(() => {
+        if (!userData.value || isAdmin.value) return 'oq_fav_guest';
+        return `oq_fav_S${userData.value.server}_${userData.value.nickname}`;
+      });
       const loadFavSet = () => {
-        try { return new Set(JSON.parse(localStorage.getItem(favKey.value) || '[]')); } catch(e) { return new Set(); }
+        try {
+          const raw = localStorage.getItem(favKey.value);
+          const arr = raw ? JSON.parse(raw) : [];
+          return new Set(Array.isArray(arr) ? arr : []);
+        } catch(e) { return new Set(); }
       };
       const favSet = ref(new Set());
       const isFavorite = (id) => favSet.value.has(id);
       const toggleFavorite = (id) => {
         if (!id) return;
         const s = new Set(favSet.value);
-        s.has(id) ? s.delete(id) : s.add(id);
+        if (s.has(id)) s.delete(id); else s.add(id);
         favSet.value = s;
         localStorage.setItem(favKey.value, JSON.stringify(Array.from(s)));
       };
@@ -502,7 +718,8 @@
           userData.value.dailyExchangeCount = 0;
           userData.value.dailyExchangeDate = today;
           tradeCount.value = 0;
-          try { await db.collection('users').doc(userData.value.id).update({ dailyExchangeCount: 0, dailyExchangeDate: today }); } catch(e) {}
+          const docId = `S${userData.value.server}_${userData.value.nickname}`;
+          try { await db.collection('users').doc(docId).update({ dailyExchangeCount: 0, dailyExchangeDate: today }); } catch(e) {}
         } else {
           tradeCount.value = userData.value.dailyExchangeCount || 0;
         }
@@ -510,7 +727,8 @@
 
       const updateLastActive = async () => {
         if (!userData.value || isAdmin.value) return;
-        try { await db.collection('users').doc(userData.value.id).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() }); } catch(e) {}
+        const docId = `S${userData.value.server}_${userData.value.nickname}`;
+        try { await db.collection('users').doc(docId).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() }); } catch(e) {}
       };
 
       const loadAppConfig = async () => {
@@ -526,47 +744,13 @@
 
       const saveAppConfig = async () => {
         if (!confirm("저장할까요?")) return;
-        try { await db.collection('config').doc('service_info').set(appConfig.value); alert("저장됨 ✅"); showAdminSettingsPopup.value = false; } catch (e) { alert("저장 실패"); }
-      };
-
-      // ⚙️ 관리자 백업/복구 (JSON)
-      const backupData = async () => {
-        if(!isAdmin.value) return;
-        isLoading.value = true;
         try {
-          const snap = await db.collection('users').get();
-          const data = [];
-          snap.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
-          const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a'); a.href = url; a.download = `oq_backup_${new Date().toISOString().slice(0,10)}.json`; a.click();
-        } catch(e) { alert("백업 실패: "+e.message); } finally { isLoading.value = false; }
-      };
-
-      const restoreData = async (e) => {
-        if(!isAdmin.value) return;
-        const file = e.target.files[0];
-        if(!file || !confirm("⚠️ 현재 데이터를 덮어쓰고 복구하시겠습니까? (되돌릴 수 없음)")) return;
-        isLoading.value = true;
-        const reader = new FileReader();
-        reader.onload = async (evt) => {
-          try {
-            const data = JSON.parse(evt.target.result);
-            if(!Array.isArray(data)) throw new Error("잘못된 파일");
-            const batchSize = 400;
-            for(let i=0; i<data.length; i+=batchSize) {
-              const batch = db.batch();
-              data.slice(i, i+batchSize).forEach(item => {
-                const { id, ...rest } = item;
-                batch.set(db.collection('users').doc(id), rest);
-              });
-              await batch.commit();
-            }
-            alert("복구 완료 ✅");
-            await fetchAdminData();
-          } catch(err) { alert("복구 실패: "+err.message); } finally { isLoading.value = false; }
-        };
-        reader.readAsText(file);
+          await db.collection('config').doc('service_info').set(appConfig.value);
+          alert("저장됨 ✅");
+          showAdminSettingsPopup.value = false;
+        } catch (e) {
+          alert("저장 실패: " + (e.message || e));
+        }
       };
 
       const refreshSpareOwnerCounts = async () => {
@@ -577,49 +761,40 @@
           const snap = await db.collection('users').get();
           snap.forEach(doc => {
             const u = doc.data();
-            if (!u || u.role === 'admin' || u.id === userData.value.id) return;
+            if (!u || u.role === 'admin') return;
+            if (u.server === userData.value.server && u.nickname === userData.value.nickname) return;
+
             const col = Array.isArray(u.collection) ? u.collection : [];
-            for (let i=0; i<81; i++) if ((col[i] || 0) > 1) counts[i] += 1;
+            for (let i=0; i<81; i++) {
+              if ((col[i] || 0) > 1) counts[i] += 1;
+            }
           });
           spareOwnerCounts.value = counts;
-        } catch(e) { spareOwnerCounts.value = Array(81).fill(0); } finally { needsLoading.value = false; }
-      };
-
-      // 📜 교환 로그 조회
-      const openHistoryPopup = async () => {
-        showHistoryPopup.value = true;
-        historyLoading.value = true;
-        historyList.value = [];
-        try {
-          const snap = await db.collection('trade_logs')
-            .where('participants', 'array-contains', userData.value.id)
-            .orderBy('timestamp', 'desc').limit(20).get();
-          const logs = [];
-          snap.forEach(doc => {
-            const d = doc.data();
-            const isSender = d.senderId === userData.value.id;
-            logs.push({
-              type: isSender ? 'give' : 'receive',
-              targetServer: isSender ? d.receiverServer : d.senderServer,
-              targetNickname: isSender ? d.receiverNickname : d.senderNickname,
-              cardName: cardNameByIndex(d.cardIndex),
-              timestamp: d.timestamp
-            });
-          });
-          historyList.value = logs;
-        } catch(e) { console.error(e); } finally { historyLoading.value = false; }
+        } catch(e) {
+          spareOwnerCounts.value = Array(81).fill(0);
+        } finally {
+          needsLoading.value = false;
+        }
       };
 
       const buildCompare = (targetUser) => {
         compareTarget.value = targetUser || {};
         const myCol = (userData.value && Array.isArray(userData.value.collection)) ? userData.value.collection : Array(81).fill(0);
         const targetCol = (targetUser && Array.isArray(targetUser.collection)) ? targetUser.collection : Array(81).fill(0);
+
         const res = { mutual: { give: [], receive: [] }, giveOnly: [], receiveOnly: [] };
+
         for (let i=0; i<81; i++) {
           const cardObj = { index: i, name: cardNameByIndex(i) };
-          if (myCol[i] > 1 && targetCol[i] === 0) res.giveOnly.push(cardObj);
-          if (targetCol[i] > 1 && myCol[i] === 0) res.receiveOnly.push(cardObj);
+          const iHaveSpare = myCol[i] > 1;
+          const iNeed = myCol[i] === 0;
+          const uHaveSpare = targetCol[i] > 1;
+          const uNeed = targetCol[i] === 0;
+
+          if (iHaveSpare && uNeed) res.giveOnly.push(cardObj);
+          if (uHaveSpare && iNeed) res.receiveOnly.push(cardObj);
         }
+
         if (res.giveOnly.length > 0 && res.receiveOnly.length > 0) {
           res.mutual.give = [...res.giveOnly];
           res.mutual.receive = [...res.receiveOnly];
@@ -627,140 +802,216 @@
         compareResult.value = res;
       };
 
-      const openCompare = (targetUser) => { showUserListPopup.value = false; showPopup.value = false; if (!targetUser || !targetUser.id) return; buildCompare(targetUser); showComparePopup.value = true; };
-      const top3GiveableToTarget = (targetUser) => {
-        const myCol = userData.value.collection;
-        const targetCol = targetUser.collection;
-        const list = [];
-        for (let i=0; i<81; i++) { if (myCol[i] > 1 && targetCol[i] === 0) list.push(cardNameByIndex(i)); if (list.length >= 3) break; }
-        return list;
-      };
-      const copyTradeText = (card, type) => {
-        const suggest = top3GiveableToTarget(compareTarget.value);
-        const suggestText = suggest.length ? `\n(제가 줄 수 있는 카드: ${suggest.join(', ')})` : '';
-        let text = (type === 'give')
-          ? `[오피스퀸] S${compareTarget.value.server} ${compareTarget.value.nickname}님! S${userData.value.server} ${userData.value.nickname}입니다.\n[${card.name}] 드릴게요! 교환하실래요?${suggestText}`
-          : `[오피스퀸] S${compareTarget.value.server} ${compareTarget.value.nickname}님! S${userData.value.server} ${userData.value.nickname}입니다.\n혹시 [${card.name}] 교환해주실 수 있나요?${suggestText}`;
-        navigator.clipboard.writeText(text).then(() => alert("복사되었습니다! 📋"));
+      const openCompare = (targetUser) => {
+        showUserListPopup.value = false;
+        showPopup.value = false;
+        if (!targetUser || !targetUser.id) return;
+        buildCompare(targetUser);
+        showComparePopup.value = true;
       };
 
-      // ⚡ 트랜잭션 + 로그 저장
+      const top3GiveableToTarget = (targetUser) => {
+        const myCol = (userData.value && Array.isArray(userData.value.collection)) ? userData.value.collection : Array(81).fill(0);
+        const targetCol = (targetUser && Array.isArray(targetUser.collection)) ? targetUser.collection : Array(81).fill(0);
+        const list = [];
+        for (let i=0; i<81; i++) {
+          if (myCol[i] > 1 && targetCol[i] === 0) list.push(cardNameByIndex(i));
+          if (list.length >= 3) break;
+        }
+        return list;
+      };
+
+      const copyTradeText = (card, type) => {
+        const myServer = userData.value.server;
+        const myName = userData.value.nickname;
+        const targetServer = compareTarget.value.server;
+        const targetName = compareTarget.value.nickname;
+
+        const suggest = top3GiveableToTarget(compareTarget.value);
+        const suggestText = suggest.length ? `\n(제가 줄 수 있는 카드: ${suggest.join(', ')})` : '';
+
+        let text = (type === 'give')
+          ? `[오피스퀸] S${targetServer} ${targetName}님! S${myServer} ${myName}입니다.\n[${card.name}] 드릴게요! 교환하실래요?${suggestText}`
+          : `[오피스퀸] S${targetServer} ${targetName}님! S${myServer} ${myName}입니다.\n혹시 [${card.name}] 교환해주실 수 있나요?${suggestText}`;
+
+        navigator.clipboard.writeText(text).then(() => alert("복사되었습니다! 📋\n게임 채팅창에 붙여넣기 하세요."));
+      };
+
       const executeTrade = async (card, type) => {
         await checkAndResetDailyLimit();
-        if (tradeCount.value >= 3) { alert("오늘 교환 3회 끝! 내일 만나요 🌙"); return; }
+        if (tradeCount.value >= 3) {
+          alert("오늘 교환 횟수 3회를 모두 소진했습니다.\n내일 오전 8시에 다시 가능해요! 🌙");
+          return;
+        }
         const actionName = type === 'give' ? `[${card.name}] 을(를) 주시겠습니까?` : `[${card.name}] 을(를) 받으시겠습니까?`;
-        if (!confirm(`${actionName}\n(상대방 교환 횟수도 차감됩니다)`)) return;
+        const effect = type === 'give' ? "내 수량 -1 / 상대 수량 +1" : "내 수량 +1 / 상대 수량 -1";
+        if (!confirm(`${actionName}\n(${effect})\n\n나와 상대방의 교환 횟수가 1회씩 차감됩니다.`)) return;
 
         isLoading.value = true;
         try {
-          const myRef = db.collection('users').doc(userData.value.id);
-          const targetRef = db.collection('users').doc(compareTarget.value.id);
+          const myDocId = `S${userData.value.server}_${userData.value.nickname}`;
+          const myDocRef = db.collection('users').doc(myDocId);
+          const targetDocRef = db.collection('users').doc(compareTarget.value.id);
           const today = getGameDate();
 
           await db.runTransaction(async (tx) => {
-            const myDoc = await tx.get(myRef);
-            const targetDoc = await tx.get(targetRef);
-            if (!myDoc.exists || !targetDoc.exists) throw "유저 정보 없음";
+            const myDoc = await tx.get(myDocRef);
+            const targetDoc = await tx.get(targetDocRef);
+            if (!myDoc.exists || !targetDoc.exists) throw "문서 없음";
 
             const myData = myDoc.data();
             const targetData = targetDoc.data();
 
-            let myCnt = (myData.dailyExchangeDate === today) ? (myData.dailyExchangeCount||0) : 0;
-            if (myCnt >= 3) throw "내 교환 횟수 초과!";
-            let targetCnt = (targetData.dailyExchangeDate === today) ? (targetData.dailyExchangeCount||0) : 0;
-            if (targetCnt >= 3) throw "상대방 교환 횟수 초과!";
+            let myCurrentCount = myData.dailyExchangeCount || 0;
+            if (myData.dailyExchangeDate !== today) myCurrentCount = 0;
+            if (myCurrentCount >= 3) throw "오늘 나의 교환 한도가 초과되었습니다!";
 
-            const myCol = [...(myData.collection || Array(81).fill(0))];
-            const targetCol = [...(targetData.collection || Array(81).fill(0))];
+            let targetCount = targetData.dailyExchangeCount || 0;
+            if (targetData.dailyExchangeDate !== today) targetCount = 0;
+            if (targetCount >= 3) throw `상대방(${targetData.nickname}님)의 오늘 교환 횟수가 마감되었습니다.`;
+
+            const myCol = Array.isArray(myData.collection) ? myData.collection : Array(81).fill(0);
+            const targetCol = Array.isArray(targetData.collection) ? targetData.collection : Array(81).fill(0);
             const idx = card.index;
 
             if (type === 'give') {
-              if (myCol[idx] < 1) throw "내 카드 부족!";
+              if (myCol[idx] < 1) throw "오류: 내 카드가 부족해요!";
               myCol[idx]--; targetCol[idx]++;
             } else {
-              if (targetCol[idx] < 1) throw "상대 카드 부족!";
+              if (targetCol[idx] < 1) throw "오류: 상대방 카드가 부족해요!";
               myCol[idx]++; targetCol[idx]--;
             }
 
             const now = firebase.firestore.FieldValue.serverTimestamp();
-            tx.update(myRef, { collection: myCol, dailyExchangeCount: myCnt + 1, dailyExchangeDate: today, lastUpdated: now, lastActive: now });
-            tx.update(targetRef, { collection: targetCol, dailyExchangeCount: targetCnt + 1, dailyExchangeDate: today, lastUpdated: now });
-            
-            // 로그 저장 (New)
-            const logRef = db.collection('trade_logs').doc();
-            tx.set(logRef, {
-              senderId: type==='give' ? userData.value.id : compareTarget.value.id,
-              senderServer: type==='give' ? userData.value.server : compareTarget.value.server,
-              senderNickname: type==='give' ? userData.value.nickname : compareTarget.value.nickname,
-              receiverId: type==='give' ? compareTarget.value.id : userData.value.id,
-              receiverServer: type==='give' ? compareTarget.value.server : userData.value.server,
-              receiverNickname: type==='give' ? compareTarget.value.nickname : userData.value.nickname,
-              cardIndex: idx,
-              timestamp: now,
-              participants: [userData.value.id, compareTarget.value.id]
-            });
+            tx.update(myDocRef, { collection: myCol, dailyExchangeCount: myCurrentCount + 1, dailyExchangeDate: today, lastUpdated: now, lastActive: now });
+            tx.update(targetDocRef, { collection: targetCol, dailyExchangeCount: targetCount + 1, dailyExchangeDate: today, lastUpdated: now });
 
             userData.value.collection = myCol;
-            userData.value.dailyExchangeCount = myCnt + 1;
+            userData.value.dailyExchangeCount = myCurrentCount + 1;
             userData.value.dailyExchangeDate = today;
-            tradeCount.value = myCnt + 1;
+            tradeCount.value = myCurrentCount + 1;
             compareTarget.value.collection = targetCol;
           });
 
           localStorage.setItem('oq_user_v4', JSON.stringify(userData.value));
-          alert(`거래 완료! (${tradeCount.value}/3)`);
+          alert(`거래 완료! (오늘 ${tradeCount.value}/3회 완료)`);
           buildCompare(compareTarget.value);
-        } catch (e) { alert("거래 실패: " + e); } finally { isLoading.value = false; }
+        } catch (e) {
+          alert("거래 실패: " + (e.message || e));
+        } finally {
+          isLoading.value = false;
+        }
       };
 
       const needsList = computed(() => {
-        const col = userData.value.collection || [];
-        return col.map((c, i) => c === 0 ? { index: i, name: cardNameByIndex(i), owners: spareOwnerCounts.value[i] || 0 } : null).filter(x => x);
+        const col = (userData.value && Array.isArray(userData.value.collection)) ? userData.value.collection : Array(81).fill(0);
+        const arr = [];
+        for (let i=0; i<81; i++) {
+          if (col[i] === 0) {
+            arr.push({ index: i, name: cardNameByIndex(i), owners: spareOwnerCounts.value[i] || 0 });
+          }
+        }
+        return arr;
       });
+
       const needsListFiltered = computed(() => {
-        const kw = needsKeyword.value.trim().toLowerCase();
-        return needsList.value.filter(x => !kw || x.name.toLowerCase().includes(kw));
+        const kw = (needsKeyword.value || '').trim().toLowerCase();
+        if (!kw) return needsList.value;
+        return needsList.value.filter(x => x.name.toLowerCase().includes(kw));
       });
-      const openNeedsPopup = async () => { needsKeyword.value = ''; showNeedsPopup.value = true; await refreshSpareOwnerCounts(); };
-      
+
+      const openNeedsPopup = async () => {
+        needsKeyword.value = '';
+        showNeedsPopup.value = true;
+        await refreshSpareOwnerCounts();
+      };
+
+      const exchangeAbsIndex = ref(null);
+      const popupCardName = computed(() => {
+        const abs = exchangeAbsIndex.value;
+        if (abs === null || abs === undefined) return '';
+        return cardNameByIndex(abs);
+      });
+
       const openExchangeByAbsoluteIndex = async (absIdx) => {
-        showNeedsPopup.value = false; showPopup.value = true; exchangeList.value = []; isLoading.value = true;
+        showNeedsPopup.value = false;
+        showPopup.value = true;
+        exchangeList.value = [];
+        isLoading.value = true;
+        exchangeAbsIndex.value = absIdx;
+
         try {
           const snap = await db.collection('users').get();
           const matches = [];
-          const myCol = userData.value.collection || [];
+          const myCol = (userData.value && Array.isArray(userData.value.collection)) ? userData.value.collection : Array(81).fill(0);
+
           snap.forEach(doc => {
             const u = doc.data();
-            if (!u || u.role === 'admin' || u.id === userData.value.id) return;
-            if ((u.collection[absIdx] || 0) > 1) {
+            if (!u || u.role === 'admin') return;
+            if (u.server === userData.value.server && u.nickname === userData.value.nickname) return;
+
+            if (Array.isArray(u.collection) && (u.collection[absIdx] || 0) > 1) {
               const giveable = [];
-              for (let k=0; k<81; k++) if (myCol[k] > 1 && (u.collection[k] || 0) === 0) giveable.push(cardNameByIndex(k));
+              for (let k=0; k<81; k++) {
+                if ((myCol[k] || 0) > 1 && (u.collection[k] || 0) === 0) giveable.push(cardNameByIndex(k));
+              }
               matches.push({ id: doc.id, server: u.server, nickname: u.nickname, collection: u.collection, lastActive: u.lastActive, giveable });
             }
           });
+
           matches.sort((a,b) => (tsToDate(b.lastActive)?.getTime()||0) - (tsToDate(a.lastActive)?.getTime()||0));
           exchangeList.value = matches;
-        } catch (e) { alert("오류: "+e); } finally { isLoading.value = false; }
+        } catch (e) {
+          alert("보유자 찾기 실패: " + (e.message || e));
+        } finally {
+          isLoading.value = false;
+        }
       };
 
       const updateCount = (i, chg) => {
+        if (!userData.value) return;
+        if (!Array.isArray(userData.value.collection)) userData.value.collection = Array(81).fill(0);
+
         const abs = (currentAlbumIdx.value * 9) + i;
         const next = (userData.value.collection[abs] || 0) + chg;
         if (next < 0) return;
+
         userData.value.collection[abs] = next;
         localStorage.setItem('oq_user_v4', JSON.stringify(userData.value));
-        db.collection('users').doc(userData.value.id).update({ collection: userData.value.collection, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() }).catch(()=>{});
+
+        const docId = `S${userData.value.server}_${userData.value.nickname}`;
+        db.collection('users').doc(docId).update({ collection: userData.value.collection, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() }).catch(()=>{});
         updateLastActive();
       };
 
-      const onCardTapCore = (i) => {
-        const abs = (currentAlbumIdx.value * 9) + i;
-        if (userData.value.collection[abs] === 0) openExchangeByAbsoluteIndex(abs); else updateCount(i, 1);
+      const onCardTapCore = (albumLocalIdx) => {
+        const absIdx = (currentAlbumIdx.value * 9) + albumLocalIdx;
+        const col = (userData.value && Array.isArray(userData.value.collection)) ? userData.value.collection : Array(81).fill(0);
+        if (col[absIdx] === 0) openExchangeByAbsoluteIndex(absIdx);
+        else updateCount(albumLocalIdx, 1);
       };
-      let holdTimer = null, holdTriggered = false;
-      const onCardHoldStart = (i) => { holdTriggered = false; clearTimeout(holdTimer); holdTimer = setTimeout(() => { holdTriggered = true; updateCount(i, -1); }, 450); };
-      const onCardHoldEnd = () => { clearTimeout(holdTimer); };
-      const onCardTap = (i) => { if(!holdTriggered) onCardTapCore(i); };
+
+      let holdTimer = null;
+      let holdTriggered = false;
+
+      const onCardHoldStart = (i) => {
+        holdTriggered = false;
+        if (holdTimer) clearTimeout(holdTimer);
+        holdTimer = setTimeout(() => {
+          holdTriggered = true;
+          updateCount(i, -1);
+        }, 450);
+      };
+
+      const onCardHoldEnd = () => {
+        if (holdTimer) clearTimeout(holdTimer);
+        holdTimer = null;
+      };
+
+      const onCardTap = (i) => {
+        if (holdTriggered) { holdTriggered = false; return; }
+        onCardTapCore(i);
+      };
 
       const getAlbumCount = (idx) => userData.value ? userData.value.collection.slice(idx*9, idx*9+9).filter(c=>c>0).length : 0;
       const totalCount = computed(() => userData.value ? userData.value.collection.filter(c=>c>0).length : 0);
@@ -771,143 +1022,313 @@
       const nextAlbum = () => { if(currentAlbumIdx.value < 8) currentAlbumIdx.value++; };
 
       const computeMatchFlags = (target) => {
-        const myCol = userData.value.collection || [];
-        const targetCol = target.collection || [];
+        const myCol = (userData.value && Array.isArray(userData.value.collection)) ? userData.value.collection : Array(81).fill(0);
+        const targetCol = (target && Array.isArray(target.collection)) ? target.collection : Array(81).fill(0);
         let give = false, receive = false;
         for (let i=0; i<81; i++) {
           if (!give && myCol[i] > 1 && targetCol[i] === 0) give = true;
           if (!receive && targetCol[i] > 1 && myCol[i] === 0) receive = true;
+          if (give && receive) break;
         }
         return { give, receive, winwin: give && receive };
       };
 
-      // ⭐ 정렬 개선 (즐겨찾기 > 윈윈 > 접속순)
       const filteredUserList = computed(() => {
-        let list = [...userList.value];
-        const kw = searchKeyword.value.toLowerCase().trim();
-        if (kw) list = list.filter(u => u.nickname.toLowerCase().includes(kw) || String(u.server).includes(kw));
+        let list = Array.isArray(userList.value) ? [...userList.value] : [];
+        const kw = (searchKeyword.value || '').toLowerCase().trim();
+        if (kw) list = list.filter(u => (u.nickname || '').toLowerCase().includes(kw) || String(u.server || '').includes(kw));
+
         if (memberFilter.value === 'fav') list = list.filter(u => isFavorite(u.id));
-        else if (memberFilter.value !== 'all') list = list.filter(u => u.match[memberFilter.value]);
+        else if (memberFilter.value === 'winwin') list = list.filter(u => u.match && u.match.winwin);
+        else if (memberFilter.value === 'receive') list = list.filter(u => u.match && u.match.receive);
+        else if (memberFilter.value === 'give') list = list.filter(u => u.match && u.match.give);
 
         list.sort((a,b) => {
-          const fa = isFavorite(a.id), fb = isFavorite(b.id);
-          if (fa !== fb) return fb - fa; // 즐겨찾기 우선
-          if (a.match.winwin !== b.match.winwin) return b.match.winwin - a.match.winwin; // 윈윈 우선
-          return (tsToDate(b.lastActive)?.getTime()||0) - (tsToDate(a.lastActive)?.getTime()||0); // 최근 활동
+          const fa = isFavorite(a.id) ? 1 : 0;
+          const fb = isFavorite(b.id) ? 1 : 0;
+          if (fb !== fa) return fb - fa;
+          return (tsToDate(b.lastActive)?.getTime()||0) - (tsToDate(a.lastActive)?.getTime()||0);
         });
         return list;
       });
 
       const fetchUsersAndShowList = async () => {
-        showUserListPopup.value = true; isLoading.value = true;
+        showUserListPopup.value = true;
+        isLoading.value = true;
+        searchKeyword.value = '';
+        memberFilter.value = 'all';
+        userList.value = [];
+
         try {
-          const snap = await db.collection('users').orderBy('lastActive', 'desc').limit(100).get(); // 성능 최적화 (100명 제한)
+          const snapshot = await db.collection('users').get();
           const users = [];
-          snap.forEach(doc => {
+          snapshot.forEach(doc => {
             const u = doc.data();
-            if (!u || u.role === 'admin' || u.id === userData.value.id) return;
-            const total = (u.collection||[]).reduce((a,b)=>a+(b>0?1:0),0);
-            if(total>0) users.push({ id: doc.id, server: u.server, nickname: u.nickname, collection: u.collection, lastActive: u.lastActive, totalCount: total, match: computeMatchFlags(u) });
+            if (!u || u.role === 'admin') return;
+            if (u.server === userData.value.server && u.nickname === userData.value.nickname) return;
+
+            const total = (u.collection || []).reduce((a, b) => a + (b>0?1:0), 0);
+            if (total <= 0) return;
+
+            users.push({
+              id: doc.id,
+              server: u.server,
+              nickname: u.nickname,
+              collection: u.collection,
+              lastActive: u.lastActive,
+              totalCount: total,
+              match: computeMatchFlags(u)
+            });
           });
           userList.value = users;
-        } catch(e) { alert("리스트 로드 실패: "+e); } finally { isLoading.value = false; }
+        } catch(e) {
+          alert("리스트 로드 실패: " + (e.message || e));
+        } finally {
+          isLoading.value = false;
+        }
       };
 
       const fetchAdminData = async () => {
-        if (!isAdmin.value) return; isLoading.value = true;
+        if (!isAdmin.value) return;
+        isLoading.value = true;
+        adminUserList.value = [];
+        adminZeroUsers.value = [];
+        adminMatchList.value = [];
+        adminTargetUserId.value = '';
+
         try {
-          const snap = await db.collection('users').get();
+          const snapshot = await db.collection('users').get();
           const all = [];
-          snap.forEach(doc => {
+          snapshot.forEach(doc => {
             const u = doc.data();
             if (!u || u.role === 'admin') return;
-            const col = u.collection || [];
-            all.push({ id: doc.id, server: u.server, nickname: u.nickname, collection: col, totalCount: col.reduce((a,b)=>a+(b>0?1:0),0), lastActive: u.lastActive });
+
+            const col = Array.isArray(u.collection) ? u.collection : Array(81).fill(0);
+            const total = col.reduce((a,b)=>a+(b>0?1:0),0);
+
+            all.push({
+              id: doc.id,
+              server: u.server,
+              nickname: u.nickname,
+              collection: col,
+              totalCount: total,
+              lastActive: u.lastActive
+            });
           });
+
           adminUserList.value = [...all].sort((a,b)=> (a.nickname||'').localeCompare((b.nickname||'')));
-          adminZeroUsers.value = all.filter(x => x.totalCount === 0).sort((a,b)=> (tsToDate(b.lastActive)?.getTime()||0) - (tsToDate(a.lastActive)?.getTime()||0));
-        } catch(e) { alert("실패: "+e); } finally { isLoading.value = false; }
+          adminZeroUsers.value = all.filter(x => x.totalCount === 0)
+            .sort((a,b)=> (tsToDate(b.lastActive)?.getTime()||0) - (tsToDate(a.lastActive)?.getTime()||0));
+        } catch(e) {
+          alert("관리자 데이터 로드 실패: " + (e.message || e));
+        } finally {
+          isLoading.value = false;
+        }
       };
 
       const calculateAdminMatches = () => {
         if (!adminTargetUserId.value) return;
-        const target = adminUserList.value.find(u => u.id === adminTargetUserId.value);
-        if (!target) return;
+        const targetUser = adminUserList.value.find(u => u.id === adminTargetUserId.value);
+        if (!targetUser) return;
+
         const matches = [];
-        adminUserList.value.forEach(d => {
-          if (d.id === target.id) return;
+        adminUserList.value.forEach(donor => {
+          if (donor.id === targetUser.id) return;
+
           const giveable = [];
-          for (let i=0; i<81; i++) if ((d.collection[i] || 0) > 1 && (target.collection[i] || 0) === 0) giveable.push({ index: i, name: cardNameByIndex(i) });
-          if (giveable.length > 0) matches.push({ user: d, giveable });
+          for (let i=0; i<81; i++) {
+            if ((donor.collection[i] || 0) > 1 && (targetUser.collection[i] || 0) === 0) {
+              giveable.push({ index: i, name: cardNameByIndex(i) });
+            }
+          }
+          if (giveable.length > 0) matches.push({ user: donor, giveable });
         });
+
         matches.sort((a,b)=> b.giveable.length - a.giveable.length);
         adminMatchList.value = matches;
       };
 
       const executeAdminTransfer = async (match) => {
-        if (!confirm(`카드 ${match.giveable.length}장 이동?`)) return; isLoading.value = true;
+        if (!confirm(`S${match.user.server} ${match.user.nickname}님의 카드 ${match.giveable.length}장을 가져오시겠습니까?`)) return;
+        isLoading.value = true;
         try {
+          const targetUserRef = db.collection('users').doc(adminTargetUserId.value);
+          const donorUserRef = db.collection('users').doc(match.user.id);
+
           await db.runTransaction(async (t) => {
-            const tr = db.collection('users').doc(adminTargetUserId.value);
-            const dr = db.collection('users').doc(match.user.id);
-            const td = (await t.get(tr)).data(), dd = (await t.get(dr)).data();
-            const tc = td.collection, dc = dd.collection;
-            match.giveable.forEach(c => { if (dc[c.index]>1) { dc[c.index]--; tc[c.index]++; } });
-            t.update(tr, { collection: tc }); t.update(dr, { collection: dc });
+            const targetDoc = await t.get(targetUserRef);
+            const donorDoc = await t.get(donorUserRef);
+            if (!targetDoc.exists || !donorDoc.exists) throw "유저 정보 없음";
+
+            const targetCol = Array.isArray(targetDoc.data().collection) ? targetDoc.data().collection : Array(81).fill(0);
+            const donorCol = Array.isArray(donorDoc.data().collection) ? donorDoc.data().collection : Array(81).fill(0);
+
+            match.giveable.forEach(card => {
+              const idx = card.index;
+              if ((donorCol[idx] || 0) > 1) { donorCol[idx]--; targetCol[idx]++; }
+            });
+
+            const now = firebase.firestore.FieldValue.serverTimestamp();
+            t.update(targetUserRef, { collection: targetCol, lastUpdated: now });
+            t.update(donorUserRef, { collection: donorCol, lastUpdated: now });
           });
-          alert("완료"); await fetchAdminData(); adminTargetUserId.value = '';
-        } catch(e) { alert("오류: "+e); } finally { isLoading.value = false; }
+
+          alert("이동 완료! ⚡");
+          await fetchAdminData();
+          adminTargetUserId.value = '';
+        } catch(e) {
+          alert("오류 발생: " + (e.message || e));
+        } finally {
+          isLoading.value = false;
+        }
       };
 
-      const adminDeleteUser = async (u) => { if(confirm("삭제?")) { await db.collection('users').doc(u.id).delete(); await fetchAdminData(); } };
-      
-      const adminResetAllUsers = async () => {
-        if (!isAdmin.value || !confirm("⚠️ 시즌 초기화? (복구 불가)") || prompt("입력: 초기화") !== "초기화") return;
-        isLoading.value = true; resetStatus.value = { visible: true, total: 0, done: 0, progress: 0, message: '시작...' };
+      const adminDeleteUser = async (u) => {
+        if (!confirm(`정말 삭제할까요?\nS${u.server} ${u.nickname}\n(복구 불가)`)) return;
         try {
-            const snap = await db.collection('users').get();
-            const batchSize = 400; let processed = 0, batch = db.batch(), count = 0;
-            const today = getGameDate(), now = firebase.firestore.FieldValue.serverTimestamp();
-            
-            for (const doc of snap.docs) {
-                if (doc.data().role === 'admin') continue;
-                batch.update(doc.ref, { collection: Array(81).fill(0), dailyExchangeCount: 0, dailyExchangeDate: today, lastUpdated: now });
-                count++; processed++;
-                if (count >= batchSize) { await batch.commit(); batch = db.batch(); count = 0; resetStatus.value = { ...resetStatus.value, done: processed, progress: Math.round(processed/snap.size*100) }; }
+          await db.collection('users').doc(u.id).delete();
+          alert("삭제 완료 ✅");
+          await fetchAdminData();
+        } catch(e) {
+          alert("삭제 실패: " + (e.message || e));
+        }
+      };
+
+      const adminResetAllUsers = async () => {
+        if (!isAdmin.value) return;
+        if (!confirm("⚠️ [경고] 정말로 시즌을 초기화하시겠습니까?\n\n모든 유저의 '카드 보유량'이 0으로 삭제됩니다.\n이 작업은 되돌릴 수 없습니다.")) return;
+
+        const confirmText = prompt("실수를 방지하기 위해 아래 문구를 똑같이 입력해주세요.\n\n초기화");
+        if (confirmText !== "초기화") {
+            alert("문구가 일치하지 않아 취소되었습니다.");
+            return;
+        }
+
+        isLoading.value = true;
+        resetStatus.value = { visible: true, total: 0, done: 0, progress: 0, message: '유저 목록을 불러오는 중...' };
+
+        try {
+            const today = getGameDate();
+            const zeroCollection = Array(81).fill(0);
+            const now = firebase.firestore.FieldValue.serverTimestamp();
+
+            const snapshot = await db.collection('users').get();
+            const targetDocs = [];
+            snapshot.forEach(doc => {
+                const u = doc.data();
+                if (u.role !== 'admin') {
+                    targetDocs.push(doc.ref);
+                }
+            });
+
+            resetStatus.value.total = targetDocs.length;
+            resetStatus.value.message = '데이터 초기화 기록 중...';
+
+            const chunkSize = 400;
+            let processedCount = 0;
+
+            for (let i = 0; i < targetDocs.length; i += chunkSize) {
+                const batch = db.batch();
+                const chunk = targetDocs.slice(i, i + chunkSize);
+
+                chunk.forEach(docRef => {
+                    batch.update(docRef, {
+                        collection: zeroCollection,
+                        dailyExchangeCount: 0,
+                        dailyExchangeDate: today,
+                        lastUpdated: now
+                    });
+                });
+
+                await batch.commit();
+                processedCount += chunk.length;
+                resetStatus.value.done = processedCount;
+                resetStatus.value.progress = Math.round((processedCount / targetDocs.length) * 100);
             }
-            if (count > 0) await batch.commit();
-            alert(`완료 (${processed}명)`); await fetchAdminData();
-        } catch(e) { alert("오류: "+e); } finally { isLoading.value = false; setTimeout(() => { resetStatus.value.visible = false; }, 2000); }
+
+            resetStatus.value.message = '완료되었습니다!';
+            resetStatus.value.progress = 100;
+            
+            alert(`✅ 시즌 초기화 완료!\n총 ${processedCount}명의 유저 데이터가 리셋되었습니다.`);
+            await fetchAdminData();
+
+        } catch (e) {
+            console.error(e);
+            alert("초기화 중 오류가 발생했습니다:\n" + (e.message || e));
+        } finally {
+            isLoading.value = false;
+            setTimeout(() => { resetStatus.value.visible = false; }, 2000);
+        }
       };
 
       const handleLogin = async () => {
-        let { server, nickname, password } = loginForm.value;
-        nickname = safeNick(nickname); server = safeServer(server);
-        if (!nickname || !password || !/^\d{4}$/.test(password)) { alert('입력 확인 (비번 4자리)'); return; }
-        if (nickname === '관리자') { if(password===ADMIN_PASSWORD) await processLogin('MASTER_ADMIN', { nickname: '관리자', server: 0, password: ADMIN_PASSWORD, role: 'admin' }); else alert("비번 틀림"); return; }
-        if (!server) { alert('서버 확인'); return; }
-        await processLogin(`S${server}_${nickname}`, { nickname, server, password, role: 'user' });
+        if (isLoading.value) return;
+
+        let server = loginForm.value.server;
+        let nickname = safeNick(loginForm.value.nickname);
+        let password = (loginForm.value.password || '').trim();
+
+        if (!nickname || !password) { alert('정보 입력!'); return; }
+        if (!/^\d{4}$/.test(password)) { alert('비밀번호는 숫자 4자리!'); return; }
+        if (/\s/.test(nickname)) { alert("닉네임에 공백은 안돼요!"); return; }
+
+        if (nickname === '관리자') {
+          if (password !== ADMIN_PASSWORD) { alert("비번 틀림"); return; }
+          await processLogin('MASTER_ADMIN', { nickname: '관리자', server: 0, password: ADMIN_PASSWORD, role: 'admin' });
+          return;
+        }
+
+        server = safeServer(server);
+        if (!server) { alert('서버 입력!'); return; }
+
+        const docId = `S${server}_${nickname}`;
+        await processLogin(docId, { nickname, server, password, role: 'user' });
       };
 
       const processLogin = async (docId, userInfo) => {
-        isLoading.value = true; await loadAppConfig();
+        isLoading.value = true;
+        await loadAppConfig();
+
         try {
           const docRef = db.collection('users').doc(docId);
           const doc = await docRef.get();
+
+          let finalData;
           if (doc.exists) {
             const data = doc.data();
-            if (data.password !== userInfo.password) { alert('비밀번호가 틀렸거나, 이미 존재하는 닉네임입니다.'); return; }
-            userData.value = { ...data, id: doc.id };
+            if ((data.password || '') !== userInfo.password) { alert('비번 틀림'); return; }
+            if (!Array.isArray(data.collection) || data.collection.length !== 81) data.collection = Array(81).fill(0);
+            finalData = data;
           } else {
-            const newUser = { ...userInfo, collection: Array(81).fill(0), createdAt: firebase.firestore.FieldValue.serverTimestamp(), lastActive: firebase.firestore.FieldValue.serverTimestamp(), dailyExchangeCount: 0, dailyExchangeDate: getGameDate() };
-            await docRef.set(newUser);
-            userData.value = { ...newUser, id: docId };
+            finalData = {
+              ...userInfo,
+              collection: Array(81).fill(0),
+              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+              lastActive: firebase.firestore.FieldValue.serverTimestamp(),
+              lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+              dailyExchangeCount: 0,
+              dailyExchangeDate: getGameDate()
+            };
+            await docRef.set(finalData);
           }
-          localStorage.setItem('oq_user_v4', JSON.stringify(userData.value));
+
+          userData.value = finalData;
+          localStorage.setItem('oq_user_v4', JSON.stringify(finalData));
           favSet.value = loadFavSet();
+
           isLoggedIn.value = true;
-          if (userData.value.role !== 'admin') { await checkAndResetDailyLimit(); updateLastActive(); } else { await fetchAdminData(); }
-        } catch(e) { alert('오류: ' + e); } finally { isLoading.value = false; }
+
+          if (finalData.role !== 'admin') {
+            await checkAndResetDailyLimit();
+            updateLastActive();
+          } else {
+            await fetchAdminData();
+          }
+        } catch(e) {
+          alert('오류: ' + (e.message || e));
+        } finally {
+          isLoading.value = false;
+        }
       };
 
       const checkLogin = async () => {
@@ -915,23 +1336,56 @@
         if (!saved) return;
         try {
           userData.value = JSON.parse(saved);
-          await loadAppConfig(); favSet.value = loadFavSet(); isLoggedIn.value = true;
-          if (userData.value.role !== 'admin') { await checkAndResetDailyLimit(); updateLastActive(); } else { await fetchAdminData(); }
+          await loadAppConfig();
+          favSet.value = loadFavSet();
+          isLoggedIn.value = true;
+
+          if (userData.value.role !== 'admin') {
+            await checkAndResetDailyLimit();
+            updateLastActive();
+          } else {
+            await fetchAdminData();
+          }
         } catch(e) {}
       };
       checkLogin();
 
-      const logout = () => { localStorage.removeItem('oq_user_v4'); userData.value = null; isLoggedIn.value = false; loginForm.value = { server: '', nickname: '', password: '' }; currentView.value = 'dashboard'; };
+      const logout = () => {
+        localStorage.removeItem('oq_user_v4');
+        userData.value = null;
+        isLoggedIn.value = false;
+        loginForm.value = { server: '', nickname: '', password: '' };
+        currentView.value = 'dashboard';
+        showPopup.value = false;
+        showUserListPopup.value = false;
+        showComparePopup.value = false;
+        showNeedsPopup.value = false;
+      };
 
       return {
-        isLoggedIn, isLoading, loginForm, handleLogin, logout, userData, isAdmin, currentView, currentAlbumIdx, currentAlbumCards,
-        openAlbum, prevAlbum, nextAlbum, updateCount, onCardTap, onCardHoldStart, onCardHoldEnd, getAlbumCount, totalCount, totalProgress, tradeCount,
-        showPopup, showUserListPopup, showComparePopup, showHelpPopup, showNeedsPopup, showHistoryPopup,
-        openNeedsPopup, needsKeyword, needsListFiltered, needsLoading, openExchangeByAbsoluteIndex, exchangeList, popupCardName,
-        fetchUsersAndShowList, userList, filteredUserList, searchKeyword, memberFilter, toggleFavorite, isFavorite,
-        openCompare, compareTarget, compareResult, copyTradeText, executeTrade, getActiveText, getActiveColor, formatLogDate,
-        adminTab, showAdminSettingsPopup, saveAppConfig, fetchAdminData, adminUserList, adminZeroUsers, adminTargetUserId, adminMatchList, calculateAdminMatches, executeAdminTransfer, adminDeleteUser, appConfig, resetStatus, adminResetAllUsers,
-        historyList, historyLoading, openHistoryPopup, backupData, restoreData
+        isLoggedIn, isLoading, loginForm, handleLogin, logout,
+        userData, isAdmin,
+        currentView, currentAlbumIdx, currentAlbumCards,
+        openAlbum, prevAlbum, nextAlbum,
+        updateCount, onCardTap, onCardHoldStart, onCardHoldEnd,
+        getAlbumCount, totalCount, totalProgress,
+        tradeCount,
+        showPopup, showUserListPopup, showComparePopup, showHelpPopup,
+        showNeedsPopup, openNeedsPopup, needsKeyword, needsListFiltered, needsLoading,
+        openExchangeByAbsoluteIndex, exchangeList, popupCardName,
+        fetchUsersAndShowList, userList, filteredUserList, searchKeyword, memberFilter,
+        toggleFavorite, isFavorite,
+        openCompare, compareTarget, compareResult,
+        copyTradeText, executeTrade,
+        getActiveText, getActiveColor,
+        // admin
+        adminTab, showAdminSettingsPopup, saveAppConfig,
+        fetchAdminData, adminUserList, adminZeroUsers,
+        adminTargetUserId, adminMatchList, calculateAdminMatches, executeAdminTransfer,
+        adminDeleteUser,
+        appConfig,
+        resetStatus,
+        adminResetAllUsers
       };
     }
   }).mount('#app');
