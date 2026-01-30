@@ -67,7 +67,7 @@
                                 S{{ user.server }} {{ user.nickname }} (현재 {{ user.totalCount }}/81)
                             </option>
                         </select>
-                        </div>
+                    </div>
                 </div>
 
                 <div v-if="adminTargetUserId">
@@ -190,9 +190,7 @@
                             <div class="flex flex-col">
                                 <span class="font-bold text-gray-700 text-sm group-hover:text-blue-600 flex items-center">{{ user.nickname }}<i v-if="user.totalCount >= 81" class="fas fa-trophy text-yellow-500 ml-1 text-xs"></i></span>
                                 <div class="flex items-center gap-2">
-                                    <span class="text-[9px] text-gray-400">
-                                        <i class="fas fa-history mr-0.5"></i>{{ getTimeAgo(user.lastUpdated) }}
-                                    </span>
+                                    <span class="text-[9px] text-gray-400">{{ getActiveText(user.lastUpdated) }}</span>
                                     <span class="text-[10px] px-1.5 rounded-full" :class="user.totalCount >= 40 ? 'bg-pink-100 text-pink-600 font-bold' : 'bg-gray-100 text-gray-500'">{{ user.totalCount || 0 }}/81</span>
                                 </div>
                             </div>
@@ -324,14 +322,13 @@
                     albumCovers: Array(9).fill("")
                 });
 
-                // 도구 함수들을 최상단으로 (오류 방지)
                 const getGameDate = () => {
                     const now = new Date();
                     if (now.getHours() < 8) now.setDate(now.getDate() - 1);
                     return now.toISOString().split('T')[0];
                 };
 
-                const getTimeAgo = (timestamp) => {
+                const getActiveText = (timestamp) => {
                     if (!timestamp) return '기록 없음';
                     try {
                         const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -349,8 +346,8 @@
                     try {
                         const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
                         const diff = Date.now() - date.getTime();
-                        if (diff < 60 * 60 * 1000) return 'bg-green-500'; // 1시간 이내 초록
-                        if (diff < 24 * 60 * 60 * 1000) return 'bg-yellow-400'; // 24시간 이내 노랑
+                        if (diff < 60 * 60 * 1000) return 'bg-green-500';
+                        if (diff < 24 * 60 * 60 * 1000) return 'bg-yellow-400';
                         return 'bg-gray-300';
                     } catch(e) { return 'bg-gray-300'; }
                 };
@@ -367,7 +364,6 @@
                 };
 
                 const updateLastActive = async () => {
-                    // 이제 로그인 시에는 lastActive만 업데이트하고, 카드 수정 시 lastUpdated를 업데이트함
                     if (!userData.value || isAdmin.value) return;
                     const docId = `S${userData.value.server}_${userData.value.nickname}`;
                     await db.collection('users').doc(docId).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() });
@@ -381,8 +377,8 @@
                         const keyword = searchKeyword.value.toLowerCase();
                         list = list.filter(user => user.nickname.toLowerCase().includes(keyword) || String(user.server).includes(keyword));
                     }
-                    // 정렬 기준: 최근 업데이트 순
                     list.sort((a, b) => {
+                        // 정렬 기준을 lastUpdated로 변경
                         const timeA = a.lastUpdated ? (a.lastUpdated.toMillis ? a.lastUpdated.toMillis() : new Date(a.lastUpdated).getTime()) : 0;
                         const timeB = b.lastUpdated ? (b.lastUpdated.toMillis ? b.lastUpdated.toMillis() : new Date(b.lastUpdated).getTime()) : 0;
                         return timeB - timeA;
@@ -422,7 +418,7 @@
                         });
                         users.sort((a, b) => a.nickname.localeCompare(b.nickname));
                         adminUserList.value = users;
-                    } catch (e) { alert("데이터 로드 실패: " + e.message); console.error(e); }
+                    } catch (e) { alert("데이터 로드 실패"); }
                     finally { isLoading.value = false; }
                 };
 
@@ -462,16 +458,10 @@
                                 const idx = card.index;
                                 if (donorCol[idx] > 1) { donorCol[idx]--; targetCol[idx]++; }
                             });
-                            
-                            // [수정] 관리자가 옮길 때도 양쪽 다 '업데이트 됨' 처리
-                            t.update(targetUserRef, { 
-                                collection: targetCol,
-                                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-                            });
-                            t.update(donorUserRef, { 
-                                collection: donorCol,
-                                lastUpdated: firebase.firestore.FieldValue.serverTimestamp() 
-                            });
+                            // 관리자 이동 시 양쪽 모두 업데이트 시간 갱신
+                            const now = firebase.firestore.FieldValue.serverTimestamp();
+                            t.update(targetUserRef, { collection: targetCol, lastUpdated: now });
+                            t.update(donorUserRef, { collection: donorCol, lastUpdated: now });
                         });
                         alert("이동 완료! ⚡");
                         await fetchAdminData();
@@ -498,7 +488,7 @@
                     const docId = userData.value.role === 'admin' ? 'MASTER_ADMIN' : `S${userData.value.server}_${userData.value.nickname}`; 
                     db.collection('users').doc(docId).update({
                         collection: userData.value.collection,
-                        lastUpdated: firebase.firestore.FieldValue.serverTimestamp() // NEW
+                        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
                     }).catch(()=>{}); 
                 };
 
@@ -518,7 +508,7 @@
                     checkExchange, showPopup, showAdminPopup, showUserListPopup, showComparePopup, showHelpPopup,
                     targetCardIdx, exchangeList, userList, compareTarget, compareResult,
                     saveAppConfig, resetAllUsers, fetchUsersAndShowList, openCompare, executeTrade, copyTradeText,
-                    searchKeyword, filteredUserList, getActiveText, getActiveColor, tradeCount, getTimeAgo,
+                    searchKeyword, filteredUserList, getActiveText, getActiveColor, tradeCount,
                     // 관리자용 변수 반환
                     adminUserList, adminTargetUserId, adminMatchList, calculateAdminMatches, executeAdminTransfer, fetchAdminData
                 };
