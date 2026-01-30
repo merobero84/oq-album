@@ -65,10 +65,12 @@
                     <div class="flex gap-2 items-center">
                         <button @click="showHelpPopup = true" class="text-gray-400 hover:text-blue-500"><i class="fas fa-question-circle text-lg"></i></button>
                         <button @click="fetchUsersAndShowList" class="text-xs bg-blue-500 text-white px-2.5 py-1.5 rounded-lg font-bold shadow-sm hover:bg-blue-600 transition">👥 멤버</button>
+                        
                         <template v-if="isAdmin">
-                            <button @click="openAdminTool" class="text-xs bg-yellow-500 text-white px-2 py-1.5 rounded-lg shadow-sm font-bold">👑 도구</button>
+                            <button @click="openAdminTool" class="text-xs bg-yellow-500 text-white px-2 py-1.5 rounded-lg shadow-sm font-bold">👑 몰아주기</button>
                             <button @click="showAdminPopup = true" class="text-xs bg-gray-600 text-white px-2 py-1.5 rounded-lg shadow-sm">⚙️</button>
                         </template>
+
                         <button @click="logout" class="text-xs text-gray-400 border border-gray-200 px-2 py-1 rounded hover:bg-gray-50">나가기</button>
                     </div>
                 </div>
@@ -126,7 +128,6 @@
                     <h2 class="text-xl font-bold text-yellow-400">👑 VIP 카드 몰아주기</h2>
                     <button @click="showAdminToolPopup = false" class="text-gray-400"><i class="fas fa-times text-xl"></i></button>
                 </div>
-
                 <div class="mb-6">
                     <label class="block text-xs text-gray-400 mb-2">누구에게 카드를 몰아줄까요? (받는 사람)</label>
                     <select v-model="adminTargetUserId" @change="calculateAdminMatches" class="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-yellow-500">
@@ -136,7 +137,6 @@
                         </option>
                     </select>
                 </div>
-
                 <div v-if="adminTargetUserId">
                     <h3 class="text-sm font-bold text-gray-300 mb-3 pl-2 border-l-4 border-yellow-500">발견된 잉여 자원 (줄 수 있는 사람들)</h3>
                     <div v-if="adminMatchList.length === 0" class="text-center py-10 text-gray-500 bg-gray-800 rounded-lg border border-gray-700">
@@ -271,7 +271,7 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        const { createApp, ref, computed } = Vue;
+        const { createApp, ref, computed, watch } = Vue;
 
         createApp({
             setup() {
@@ -288,8 +288,8 @@
                 const showComparePopup = ref(false);
                 const showAdminPopup = ref(false);
                 const showHelpPopup = ref(false);
-                const showAdminToolPopup = ref(false); // 관리자 도구 팝업
-                
+                const showAdminToolPopup = ref(false); // [추가] 몰아주기 팝업 상태
+
                 const adminUserList = ref([]);
                 const adminTargetUserId = ref('');
                 const adminMatchList = ref([]);
@@ -306,22 +306,23 @@
                     albumCovers: Array(9).fill("")
                 });
 
+                // --- 유틸리티 함수 ---
                 const getGameDate = () => {
                     const now = new Date();
                     if (now.getHours() < 8) now.setDate(now.getDate() - 1);
                     return now.toISOString().split('T')[0];
                 };
 
-                const getActiveText = (timestamp) => {
+                const getTimeAgo = (timestamp) => {
                     if (!timestamp) return '기록 없음';
                     try {
                         const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
                         const diff = Date.now() - date.getTime();
                         const min = 60 * 1000; const hour = 60 * min; const day = 24 * hour;
-                        if (diff < 10 * min) return '방금 전 업데이트';
-                        if (diff < hour) return `${Math.floor(diff / min)}분 전 업데이트`;
-                        if (diff < day) return `${Math.floor(diff / hour)}시간 전 업데이트`;
-                        return `${Math.floor(diff / day)}일 전 업데이트`;
+                        if (diff < 10 * min) return '방금 전';
+                        if (diff < hour) return `${Math.floor(diff / min)}분 전`;
+                        if (diff < day) return `${Math.floor(diff / hour)}시간 전`;
+                        return `${Math.floor(diff / day)}일 전`;
                     } catch(e) { return '기록 없음'; }
                 };
 
@@ -330,28 +331,64 @@
                     try {
                         const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
                         const diff = Date.now() - date.getTime();
-                        if (diff < 60 * 60 * 1000) return 'bg-green-500';
-                        if (diff < 24 * 60 * 60 * 1000) return 'bg-yellow-400';
+                        if (diff < 60 * 60 * 1000) return 'bg-green-500'; // 1시간 이내
+                        if (diff < 24 * 60 * 60 * 1000) return 'bg-yellow-400'; // 24시간 이내
                         return 'bg-gray-300';
                     } catch(e) { return 'bg-gray-300'; }
                 };
 
-                const checkAndResetDailyLimit = async () => {
-                    if (!userData.value || isAdmin.value) return; 
-                    const todayGameDate = getGameDate();
-                    if (userData.value.dailyExchangeDate !== todayGameDate) {
-                        userData.value.dailyExchangeCount = 0;
-                        userData.value.dailyExchangeDate = todayGameDate;
-                        tradeCount.value = 0;
-                        const docId = `S${userData.value.server}_${userData.value.nickname}`;
-                        try { await db.collection('users').doc(docId).update({ dailyExchangeCount: 0, dailyExchangeDate: todayGameDate }); } catch(e) {}
-                    } else {
-                        tradeCount.value = userData.value.dailyExchangeCount || 0;
-                    }
+                const copyTradeText = (card, type) => {
+                    const myServer = userData.value.server;
+                    const myName = userData.value.nickname;
+                    const targetServer = compareTarget.value.server;
+                    const targetName = compareTarget.value.nickname;
+                    let text = type === 'give' 
+                        ? `[오피스퀸] S${targetServer} ${targetName}님! S${myServer} ${myName}입니다.\n[${card.name}] 드릴게요! 교환하실래요?`
+                        : `[오피스퀸] S${targetServer} ${targetName}님! S${myServer} ${myName}입니다.\n혹시 [${card.name}] 교환해주실 수 있나요?`;
+                    navigator.clipboard.writeText(text).then(() => { alert("복사되었습니다! 📋\n게임 채팅창에 붙여넣기 하세요."); });
                 };
 
+                // --- 데이터 로직 ---
+                const updateLastActive = async () => {
+                    if (!userData.value || isAdmin.value) return;
+                    const docId = `S${userData.value.server}_${userData.value.nickname}`;
+                    await db.collection('users').doc(docId).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() });
+                };
+
+                const loadAppConfig = async () => {
+                    try {
+                        const doc = await db.collection('config').doc('service_info').get();
+                        if (doc.exists) {
+                            const data = doc.data();
+                            if(data.albumNames) appConfig.value.albumNames = data.albumNames;
+                            if(data.albumCovers) appConfig.value.albumCovers = data.albumCovers;
+                        }
+                    } catch (e) {}
+                };
+
+                const fetchUsersAndShowList = async () => {
+                    showUserListPopup.value = true;
+                    isLoading.value = true;
+                    searchKeyword.value = '';
+                    userList.value = [];
+                    try {
+                        const snapshot = await db.collection('users').get();
+                        const users = [];
+                        snapshot.forEach(doc => {
+                            const u = doc.data();
+                            if (u.nickname !== userData.value.nickname && u.role !== 'admin') {
+                                const total = (u.collection || []).reduce((a, b) => a + (b>0?1:0), 0);
+                                users.push({ id: doc.id, ...u, totalCount: total });
+                            }
+                        });
+                        userList.value = users;
+                    } catch (e) { alert("리스트 로드 실패"); } 
+                    finally { isLoading.value = false; }
+                };
+
+                // --- 관리자 전용 기능 (몰아주기) ---
                 const openAdminTool = () => {
-                    if(!isAdmin.value) return;
+                    if (!isAdmin.value) return;
                     showAdminToolPopup.value = true;
                     fetchAdminData();
                 };
@@ -374,7 +411,7 @@
                         });
                         users.sort((a, b) => a.nickname.localeCompare(b.nickname));
                         adminUserList.value = users;
-                    } catch (e) { alert("데이터 로드 실패: " + e.message); console.error(e); }
+                    } catch (e) { alert("데이터 로드 실패"); }
                     finally { isLoading.value = false; }
                 };
 
@@ -414,6 +451,7 @@
                                 const idx = card.index;
                                 if (donorCol[idx] > 1) { donorCol[idx]--; targetCol[idx]++; }
                             });
+                            // 관리자 이동 시 양쪽 업데이트 시간 갱신
                             const now = firebase.firestore.FieldValue.serverTimestamp();
                             t.update(targetUserRef, { collection: targetCol, lastUpdated: now });
                             t.update(donorUserRef, { collection: donorCol, lastUpdated: now });
@@ -425,54 +463,7 @@
                     finally { isLoading.value = false; }
                 };
 
-                const copyTradeText = (card, type) => {
-                    const myServer = userData.value.server;
-                    const myName = userData.value.nickname;
-                    const targetServer = compareTarget.value.server;
-                    const targetName = compareTarget.value.nickname;
-                    let text = type === 'give' 
-                        ? `[오피스퀸] S${targetServer} ${targetName}님! S${myServer} ${myName}입니다.\n[${card.name}] 드릴게요! 교환하실래요?`
-                        : `[오피스퀸] S${targetServer} ${targetName}님! S${myServer} ${myName}입니다.\n혹시 [${card.name}] 교환해주실 수 있나요?`;
-                    navigator.clipboard.writeText(text).then(() => { alert("복사되었습니다! 📋\n게임 채팅창에 붙여넣기 하세요."); });
-                };
-
-                const updateLastActive = async () => {
-                    if (!userData.value || isAdmin.value) return;
-                    const docId = `S${userData.value.server}_${userData.value.nickname}`;
-                    await db.collection('users').doc(docId).update({ lastActive: firebase.firestore.FieldValue.serverTimestamp() });
-                };
-
-                const loadAppConfig = async () => {
-                    try {
-                        const doc = await db.collection('config').doc('service_info').get();
-                        if (doc.exists) {
-                            const data = doc.data();
-                            if(data.albumNames) appConfig.value.albumNames = data.albumNames;
-                            if(data.albumCovers) appConfig.value.albumCovers = data.albumCovers;
-                        }
-                    } catch (e) {}
-                };
-
-                const fetchUsersAndShowList = async () => {
-                    showUserListPopup.value = true;
-                    isLoading.value = true;
-                    searchKeyword.value = '';
-                    userList.value = [];
-                    try {
-                        const snapshot = await db.collection('users').get();
-                        const users = [];
-                        snapshot.forEach(doc => {
-                            const u = doc.data();
-                            if (u.nickname !== userData.value.nickname && u.role !== 'admin') {
-                                const total = (u.collection || []).reduce((a, b) => a + (b>0?1:0), 0);
-                                users.push({ id: doc.id, ...u, totalCount: total });
-                            }
-                        });
-                        userList.value = users;
-                    } catch (e) { alert("리스트 로드 실패"); } 
-                    finally { isLoading.value = false; }
-                };
-
+                // --- 기본 로직 ---
                 const openCompare = (targetUser) => {
                     showUserListPopup.value = false;
                     showPopup.value = false;
@@ -534,7 +525,7 @@
                             }
                             const myNewCount = myCurrentCount + 1;
                             const targetNewCount = targetCount + 1;
-                            // 거래 시 lastUpdated 갱신
+                            // [추가] 거래 시 업데이트 시간 갱신
                             const now = firebase.firestore.FieldValue.serverTimestamp();
                             transaction.update(myDocRef, { collection: myCol, dailyExchangeCount: myNewCount, dailyExchangeDate: today, lastUpdated: now });
                             transaction.update(targetDocRef, { collection: targetCol, dailyExchangeCount: targetNewCount, dailyExchangeDate: today, lastUpdated: now });
@@ -559,6 +550,8 @@
                 const checkLogin = async () => { const savedUser = localStorage.getItem('oq_user_v4'); if (savedUser) { try { userData.value = JSON.parse(savedUser); await loadAppConfig(); if(userData.value.role !== 'admin') await checkAndResetDailyLimit(); isLoggedIn.value = true; updateLastActive(); if(userData.value.role === 'admin') fetchAdminData(); } catch(e) {} } }; checkLogin();
                 const logout = () => { localStorage.removeItem('oq_user_v4'); userData.value = null; isLoggedIn.value = false; loginForm.value = { server: '', nickname: '', password: '' }; };
                 const currentAlbumCards = computed(() => userData.value ? userData.value.collection.slice(currentAlbumIdx.value*9, (currentAlbumIdx.value*9)+9) : []);
+                
+                // [중요] 카드 수량 변경 시 lastUpdated 갱신
                 const updateCount = (i, chg) => { 
                     if (!userData.value) return; 
                     const rIdx = (currentAlbumIdx.value*9)+i; 
@@ -568,9 +561,10 @@
                     const docId = userData.value.role === 'admin' ? 'MASTER_ADMIN' : `S${userData.value.server}_${userData.value.nickname}`; 
                     db.collection('users').doc(docId).update({
                         collection: userData.value.collection,
-                        lastUpdated: firebase.firestore.FieldValue.serverTimestamp() // 카드 수정 시 업데이트 시간 갱신
+                        lastUpdated: firebase.firestore.FieldValue.serverTimestamp() // 추가됨
                     }).catch(()=>{}); 
                 };
+
                 const getAlbumCount = (idx) => userData.value ? userData.value.collection.slice(idx*9, idx*9+9).filter(c=>c>0).length : 0;
                 const totalCount = computed(() => userData.value ? userData.value.collection.filter(c=>c>0).length : 0);
                 const totalProgress = computed(() => Math.round((totalCount.value/81)*100));
@@ -578,6 +572,7 @@
                 const prevAlbum = () => { if(currentAlbumIdx.value > 0) currentAlbumIdx.value--; };
                 const nextAlbum = () => { if(currentAlbumIdx.value < 8) currentAlbumIdx.value++; };
                 
+                // [오류 수정] targetCardCardIdx -> targetCardIdx
                 const checkExchange = async (i) => { const rIdx = (currentAlbumIdx.value*9)+i; if (userData.value.collection[rIdx]>0) return; targetCardIdx.value = i; showPopup.value = true; exchangeList.value = []; isLoading.value = true; try { const snap = await db.collection('users').get(); const matches = []; snap.forEach(doc => { const u = doc.data(); if(u.nickname === userData.value.nickname) return; if(u.collection && u.collection[rIdx] > 1) { const giveable = []; for(let k=0; k<81; k++) { if(userData.value.collection[k]>1 && u.collection[k]===0) { const aIdx = Math.floor(k/9); const albumName = appConfig.value.albumNames[aIdx] || `앨범${aIdx+1}`; giveable.push(`${albumName} - 사진${(k%9)+1}`); } } matches.push({id:doc.id, server:u.server, nickname:u.nickname, collection: u.collection, giveable}); } }); exchangeList.value = matches; } catch(e){} finally { isLoading.value = false; } };
 
                 return { 
@@ -585,7 +580,7 @@
                     currentView, currentAlbumIdx, currentAlbumCards, appConfig,
                     openAlbum, prevAlbum, nextAlbum, updateCount, getAlbumCount, totalCount, totalProgress, 
                     checkExchange, showPopup, showAdminPopup, showUserListPopup, showComparePopup, showHelpPopup,
-                    showAdminToolPopup, openAdminTool, // 관리자 도구
+                    showAdminToolPopup, openAdminTool, // 관리자 팝업용
                     targetCardIdx, exchangeList, userList, compareTarget, compareResult,
                     saveAppConfig, resetAllUsers, fetchUsersAndShowList, openCompare, executeTrade, copyTradeText,
                     searchKeyword, filteredUserList, getActiveText, getActiveColor, tradeCount, getTimeAgo,
