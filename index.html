@@ -67,7 +67,7 @@
                         <button @click="fetchUsersAndShowList" class="text-xs bg-blue-500 text-white px-2.5 py-1.5 rounded-lg font-bold shadow-sm hover:bg-blue-600 transition">👥 멤버</button>
                         
                         <template v-if="isAdmin">
-                            <button @click="openAdminTool" class="text-xs bg-yellow-500 text-white px-2 py-1.5 rounded-lg shadow-sm font-bold">👑 몰아주기</button>
+                            <button @click="openAdminTool" class="text-xs bg-yellow-500 text-white px-2 py-1.5 rounded-lg shadow-sm font-bold">👑 도구</button>
                             <button @click="showAdminPopup = true" class="text-xs bg-gray-600 text-white px-2 py-1.5 rounded-lg shadow-sm">⚙️</button>
                         </template>
 
@@ -128,6 +128,7 @@
                     <h2 class="text-xl font-bold text-yellow-400">👑 VIP 카드 몰아주기</h2>
                     <button @click="showAdminToolPopup = false" class="text-gray-400"><i class="fas fa-times text-xl"></i></button>
                 </div>
+
                 <div class="mb-6">
                     <label class="block text-xs text-gray-400 mb-2">누구에게 카드를 몰아줄까요? (받는 사람)</label>
                     <select v-model="adminTargetUserId" @change="calculateAdminMatches" class="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-yellow-500">
@@ -137,6 +138,7 @@
                         </option>
                     </select>
                 </div>
+
                 <div v-if="adminTargetUserId">
                     <h3 class="text-sm font-bold text-gray-300 mb-3 pl-2 border-l-4 border-yellow-500">발견된 잉여 자원 (줄 수 있는 사람들)</h3>
                     <div v-if="adminMatchList.length === 0" class="text-center py-10 text-gray-500 bg-gray-800 rounded-lg border border-gray-700">
@@ -319,10 +321,10 @@
                         const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
                         const diff = Date.now() - date.getTime();
                         const min = 60 * 1000; const hour = 60 * min; const day = 24 * hour;
-                        if (diff < 10 * min) return '방금 전';
-                        if (diff < hour) return `${Math.floor(diff / min)}분 전`;
-                        if (diff < day) return `${Math.floor(diff / hour)}시간 전`;
-                        return `${Math.floor(diff / day)}일 전`;
+                        if (diff < 10 * min) return '방금 전 업데이트';
+                        if (diff < hour) return `${Math.floor(diff / min)}분 전 업데이트`;
+                        if (diff < day) return `${Math.floor(diff / hour)}시간 전 업데이트`;
+                        return `${Math.floor(diff / day)}일 전 업데이트`;
                     } catch(e) { return '기록 없음'; }
                 };
 
