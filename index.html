@@ -952,55 +952,59 @@
         return out;
       });
 
-      const fetchUsersAndShowList = async () => {
-        showUserListPopup.value = true;
-        isLoading.value = true;
-        searchKeyword.value = '';
-        userList.value = [];
+const fetchUsersAndShowList = async () => {
+  showUserListPopup.value = true;
+  isLoading.value = true;
+  searchKeyword.value = '';
+  userList.value = [];
 
-        try {
-          if (!userData.value) {
-            alert("사용자 정보가 없습니다. 다시 로그인해주세요.");
-            return;
-          }
+  try {
+    if (!userData.value) {
+      alert("사용자 정보가 없습니다. 다시 로그인해주세요.");
+      return;
+    }
 
-          const snap = await db.collection('users').get();
-          const arr = [];
+    const snap = await db.collection('users').get();
+    const arr = [];
 
-          snap.forEach(doc => {
-            const u = doc.data() || {};
+    snap.forEach(doc => {
+      const u = doc.data() || {};
 
-            // nickname 없는 문서 제외(에러 방지)
-            if (!u.nickname || typeof u.nickname !== 'string') return;
+      // nickname 없는 문서 제외(에러 방지)
+      if (!u.nickname || typeof u.nickname !== 'string') return;
 
-            // admin 제외
-            if (u.role === 'admin') return;
+      // admin 제외
+      if (u.role === 'admin') return;
 
-            // 내 문서 제외 (doc.id 기준이 더 안전)
-            const myId = getMyDocId();
-            if (doc.id === myId) return;
+      // 내 문서 제외
+      const myId = getMyDocId();
+      if (doc.id === myId) return;
 
-            const col = normalizeCollection(u.collection);
-            const total = col.reduce((a, b) => a + (b > 0 ? 1 : 0), 0);
+      const col = normalizeCollection(u.collection);
+      const total = col.reduce((a, b) => a + (b > 0 ? 1 : 0), 0);
 
-            arr.push({
-              id: doc.id,
-              server: u.server,
-              nickname: u.nickname,
-              collection: col,
-              totalCount: total,
-              lastUpdated: u.lastUpdated || u.lastActive || null
-            });
-          });
+      // ✅ 핵심: 일반 유저일 때는 "카드 1장 이상"만 노출
+      if (!isAdmin.value && total < 1) return;
 
-          userList.value = arr;
-        } catch (e) {
-          console.error("user list load error", e);
-          alert("리스트 로드 실패: " + (e.message || e));
-        } finally {
-          isLoading.value = false;
-        }
-      };
+      arr.push({
+        id: doc.id,
+        server: u.server,
+        nickname: u.nickname,
+        collection: col,
+        totalCount: total,
+        lastUpdated: u.lastUpdated || u.lastActive || null
+      });
+    });
+
+    userList.value = arr;
+  } catch (e) {
+    console.error("user list load error", e);
+    alert("리스트 로드 실패: " + (e.message || e));
+  } finally {
+    isLoading.value = false;
+  }
+};
+
 
       // ====== compare ======
       const openCompare = (targetUser) => {
@@ -1426,3 +1430,4 @@
 
 </body>
 </html>
+
