@@ -31,12 +31,11 @@
 <body>
 <div id="app" v-cloak class="max-w-md mx-auto bg-white min-h-screen shadow-xl relative flex flex-col overflow-hidden">
 
-  <!-- 로그인 -->
+  <!-- 로그인 화면 -->
   <div v-if="!isLoggedIn" class="p-8 flex flex-col justify-center h-screen bg-pink-50 relative">
     <button @click="showHelpPopup = true" class="absolute top-4 right-4 text-gray-400 text-sm flex flex-col items-center">
       <i class="fas fa-question-circle text-xl mb-1"></i><span class="text-xs">도움말</span>
     </button>
-
     <div class="text-center mb-10">
       <span class="text-4xl">👸</span>
       <h1 class="text-3xl font-bold text-pink-600 mt-2">오피스퀸<br>앨범 교환소</h1>
@@ -46,9 +45,7 @@
       <input v-model="loginForm.server" type="number" placeholder="서버 번호 (숫자)" class="w-full p-4 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-300">
       <input v-model="loginForm.nickname" type="text" placeholder="닉네임" class="w-full p-4 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-300">
       <input v-model="loginForm.password" type="password" maxlength="4" placeholder="비밀번호 4자리" class="w-full p-4 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-300">
-      <button @click="handleLogin"
-              class="w-full bg-gradient-to-r from-pink-500 to-pink-400 text-white p-4 rounded-xl font-bold hover:from-pink-600 hover:to-pink-500 transition shadow-md flex justify-center items-center"
-              :disabled="isLoading">
+      <button @click="handleLogin" class="w-full bg-gradient-to-r from-pink-500 to-pink-400 text-white p-4 rounded-xl font-bold hover:from-pink-600 hover:to-pink-500 transition shadow-md flex justify-center items-center" :disabled="isLoading">
         <div v-if="isLoading" class="loader mr-2 border-white border-t-transparent"></div>
         <span>{{ isLoading ? '로딩중...' : '입장하기' }}</span>
       </button>
@@ -56,17 +53,27 @@
     <p class="text-xs text-gray-400 text-center mt-6">서버/닉네임 입력 시 자동 가입됩니다.</p>
   </div>
 
-  <!-- 메인(유저) -->
+  <!-- 사용자 화면 -->
   <div v-else class="flex flex-col h-screen bg-[#f0f9ff]">
 
-    <!-- 상단 -->
+    <!-- 상단 헤더 -->
     <div class="sticky top-0 bg-white/90 backdrop-blur-sm z-20 border-b border-blue-100 p-3 shadow-sm flex-none">
       <div class="flex justify-between items-center mb-2">
         <div class="flex flex-col">
           <span class="font-bold text-gray-700 text-sm flex items-center">
             <span class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded text-xs mr-1 font-bold">S{{ userData.server }}</span>
             {{ userData.nickname }}님
+
+            <!-- ✅ 내 카드만 초기화 (교환횟수 유지) -->
+            <button
+              @click="resetMyCardsOnly"
+              class="ml-2 text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded-lg font-extrabold hover:bg-gray-200 btn-press border border-gray-200"
+              title="내 카드만 초기화 (교환횟수 유지)"
+            >
+              🧹카드초기화
+            </button>
           </span>
+
           <span class="text-[10px] font-bold mt-1" :class="tradeCount >= 3 ? 'text-red-500' : 'text-green-600'">
             <i class="fas fa-sync-alt mr-1"></i>
             오늘 교환 {{ tradeCount }}/3 {{ tradeCount >= 3 ? '(마감)' : '' }}
@@ -75,6 +82,16 @@
 
         <div class="flex gap-2 items-center">
           <button @click="showHelpPopup = true" class="text-gray-400 hover:text-blue-500"><i class="fas fa-question-circle text-lg"></i></button>
+
+          <!-- ✅ 67섭 시소만 앨범 설정 가능 -->
+          <button
+            v-if="canEditAlbumConfig"
+            @click="showAdminSettingsPopup = true"
+            class="text-xs bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg font-extrabold shadow-sm hover:bg-indigo-600 transition btn-press"
+          >
+            ⚙️ 앨범설정
+          </button>
+
           <button @click="openNeedsPopup" class="text-xs bg-pink-500 text-white px-2.5 py-1.5 rounded-lg font-extrabold shadow-sm hover:bg-pink-600 transition btn-press">🧾 구해요</button>
           <button @click="fetchUsersAndShowList" class="text-xs bg-blue-500 text-white px-2.5 py-1.5 rounded-lg font-extrabold shadow-sm hover:bg-blue-600 transition btn-press">👥 멤버</button>
           <button @click="logout" class="text-xs text-gray-400 border border-gray-200 px-2 py-1 rounded hover:bg-gray-50 btn-press">나가기</button>
@@ -89,8 +106,9 @@
       </div>
     </div>
 
+    <!-- 본문 -->
     <div class="flex-1 overflow-y-auto hide-scroll p-4 pb-20">
-      <!-- 앨범 리스트 -->
+      <!-- 대시보드 -->
       <div v-if="currentView === 'dashboard'" class="grid grid-cols-3 gap-x-2 gap-y-6">
         <div v-for="(album, idx) in appConfig.albumNames" :key="idx" @click="openAlbum(idx)" class="flex flex-col items-center cursor-pointer group">
           <div class="w-20 h-20 rounded-full border-4 border-white shadow-lg overflow-hidden relative bg-white group-hover:scale-105 transition duration-200 ring-2 ring-gray-100">
@@ -110,7 +128,7 @@
         </div>
       </div>
 
-      <!-- 앨범 상세 -->
+      <!-- 상세 -->
       <div v-if="currentView === 'detail'">
         <div class="flex justify-between items-center mb-4 bg-white p-2 rounded-xl shadow-sm border border-blue-100">
           <button @click="prevAlbum" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 btn-press text-gray-600"><i class="fas fa-chevron-left"></i></button>
@@ -151,7 +169,7 @@
     </div>
   </div>
 
-  <!-- 멤버 팝업 -->
+  <!-- 멤버 리스트 팝업 -->
   <div v-if="showUserListPopup" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" @click.self="showUserListPopup = false">
     <div class="bg-white rounded-2xl w-full max-w-sm p-5 relative max-h-[86vh] overflow-y-auto shadow-2xl hide-scroll">
       <button @click="showUserListPopup = false" class="absolute top-4 right-4 text-gray-300 hover:text-gray-500"><i class="fas fa-times"></i></button>
@@ -209,7 +227,7 @@
     </div>
   </div>
 
-  <!-- 비교 팝업 -->
+  <!-- 전체 비교 팝업 -->
   <div v-if="showComparePopup" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" @click.self="showComparePopup = false">
     <div class="bg-white rounded-2xl w-full max-w-sm p-5 relative max-h-[85vh] overflow-y-auto shadow-2xl hide-scroll">
       <button @click="showComparePopup = false" class="absolute top-3 right-3 text-gray-300 hover:text-gray-500"><i class="fas fa-times"></i></button>
@@ -280,7 +298,7 @@
     </div>
   </div>
 
-  <!-- 보유자 찾기 팝업 -->
+  <!-- 카드 보유자 찾기 팝업 -->
   <div v-if="showPopup" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" @click.self="showPopup = false">
     <div class="bg-white rounded-2xl w-full max-w-sm p-6 relative shadow-2xl">
       <button @click="showPopup = false" class="absolute top-4 right-4 text-gray-300 hover:text-gray-500"><i class="fas fa-times"></i></button>
@@ -312,7 +330,7 @@
     </div>
   </div>
 
-  <!-- 구해요 목록 -->
+  <!-- 구해요 목록 팝업 -->
   <div v-if="showNeedsPopup" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" @click.self="showNeedsPopup = false">
     <div class="bg-white rounded-2xl w-full max-w-sm p-5 relative max-h-[85vh] overflow-y-auto shadow-2xl hide-scroll">
       <button @click="showNeedsPopup = false" class="absolute top-4 right-4 text-gray-300 hover:text-gray-500"><i class="fas fa-times"></i></button>
@@ -350,7 +368,36 @@
     </div>
   </div>
 
-  <!-- 도움말 -->
+  <!-- ✅ 앨범 설정 팝업 (67섭 시소만) -->
+  <div v-if="showAdminSettingsPopup" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" @click.self="showAdminSettingsPopup = false">
+    <div class="bg-white rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto hide-scroll shadow-2xl">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-extrabold text-gray-800">⚙️ 앨범 설정</h2>
+        <button @click="showAdminSettingsPopup = false" class="text-gray-400 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
+      </div>
+
+      <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-3 text-xs text-indigo-700 font-bold mb-4">
+        이 설정은 <b>67섭 시소</b>만 저장할 수 있어요.
+      </div>
+
+      <div class="space-y-4">
+        <div v-for="(name, idx) in appConfig.albumNames" :key="idx" class="border-b pb-4">
+          <label class="block text-sm font-extrabold text-gray-700 mb-2">앨범 {{ idx + 1 }}</label>
+          <div class="grid grid-cols-1 gap-2">
+            <input v-model="appConfig.albumNames[idx]" type="text" class="w-full p-2 border rounded text-sm">
+            <input v-model="appConfig.albumCovers[idx]" type="text" placeholder="이미지 주소" class="w-full p-2 border rounded text-sm text-gray-500">
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-5 flex gap-2">
+        <button @click="saveAppConfig" class="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl font-extrabold btn-press">저장</button>
+        <button @click="showAdminSettingsPopup=false" class="px-4 py-3 bg-gray-200 text-gray-700 rounded-xl font-extrabold btn-press">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 도움말 팝업 -->
   <div v-if="showHelpPopup" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" @click.self="showHelpPopup = false">
     <div class="bg-white rounded-2xl w-full max-w-sm p-6 relative shadow-2xl">
       <button @click="showHelpPopup = false" class="absolute top-4 right-4 text-gray-300 hover:text-gray-500"><i class="fas fa-times text-xl"></i></button>
@@ -386,6 +433,16 @@
           <div>
             <h4 class="text-sm font-extrabold text-gray-700">복사 & 붙여넣기</h4>
             <p class="text-xs text-gray-500 leading-snug">복사 버튼을 눌러 게임 채팅창에 붙여넣으세요!</p>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <div class="w-6 h-6 rounded-full bg-yellow-100 text-yellow-700 flex items-center justify-center font-extrabold text-xs flex-none">4</div>
+          <div>
+            <h4 class="text-sm font-extrabold text-gray-700">내 카드 초기화</h4>
+            <p class="text-xs text-gray-500 leading-snug">
+              상단 닉네임 옆 <b>🧹카드초기화</b>는 <b>카드만</b> 0으로 초기화합니다.<br>
+              <span class="font-bold">오늘 교환 횟수(기록)는 유지</span>돼요.
+            </p>
           </div>
         </div>
       </div>
@@ -437,6 +494,9 @@
       const needsLoading = ref(false);
       const spareOwnerCounts = ref(Array(81).fill(0));
 
+      // 앨범 설정 팝업(시소 전용)
+      const showAdminSettingsPopup = ref(false);
+
       // lists
       const exchangeList = ref([]);
       const userList = ref([]);
@@ -450,6 +510,12 @@
       const appConfig = ref({
         albumNames: Array(9).fill().map((_, i) => `앨범 ${i+1}`),
         albumCovers: Array(9).fill("")
+      });
+
+      // ✅ 67섭 시소만 앨범 설정 가능
+      const canEditAlbumConfig = computed(() => {
+        if (!userData.value) return false;
+        return Number(userData.value.server) === 67 && String(userData.value.nickname) === '시소';
       });
 
       const safeNick = (v) => (v || '').toString().trim();
@@ -500,7 +566,7 @@
         return `${albumName} - 사진${cIdx}`;
       };
 
-      // favorites (유저별 localStorage)
+      // favorites
       const favKey = computed(() => {
         if (!userData.value) return 'oq_fav_guest';
         return `oq_fav_S${userData.value.server}_${userData.value.nickname}`;
@@ -553,6 +619,57 @@
         } catch (e) {}
       };
 
+      // ✅ 67섭 시소만 저장 가능
+      const saveAppConfig = async () => {
+        if (!canEditAlbumConfig.value) {
+          alert("권한이 없습니다. (67섭 시소만 가능)");
+          return;
+        }
+        if (!confirm("저장할까요?")) return;
+        try {
+          await db.collection('config').doc('service_info').set(appConfig.value);
+          alert("저장됨 ✅");
+          showAdminSettingsPopup.value = false;
+        } catch (e) {
+          alert("저장 실패: " + (e.message || e));
+        }
+      };
+
+      // ✅ 내 카드만 초기화 (교환횟수/기록 유지)
+      const resetMyCardsOnly = async () => {
+        if (!userData.value) return;
+
+        if (!confirm("내 카드만 초기화할까요?\n(오늘 교환 횟수/기록은 유지됩니다)")) return;
+
+        const confirmText = prompt("실수 방지를 위해 아래 문구를 입력해주세요.\n\n카드초기화");
+        if (confirmText !== "카드초기화") {
+          alert("문구가 일치하지 않아 취소되었습니다.");
+          return;
+        }
+
+        isLoading.value = true;
+        try {
+          const zeroCollection = Array(81).fill(0);
+          const docId = `S${userData.value.server}_${userData.value.nickname}`;
+          const now = firebase.firestore.FieldValue.serverTimestamp();
+
+          // 카드만 리셋: dailyExchangeCount / dailyExchangeDate는 건드리지 않음
+          await db.collection('users').doc(docId).update({
+            collection: zeroCollection,
+            lastUpdated: now,
+            lastActive: now
+          });
+
+          userData.value.collection = zeroCollection;
+          localStorage.setItem('oq_user_v4', JSON.stringify(userData.value));
+          alert("내 카드 초기화 완료 ✅\n(오늘 교환 횟수는 유지됨)");
+        } catch (e) {
+          alert("초기화 실패: " + (e.message || e));
+        } finally {
+          isLoading.value = false;
+        }
+      };
+
       const refreshSpareOwnerCounts = async () => {
         if (!userData.value) return;
         needsLoading.value = true;
@@ -562,10 +679,6 @@
           snap.forEach(doc => {
             const u = doc.data();
             if (!u) return;
-
-            // 혹시 과거 admin 문서가 남아있을 수 있어 안전 처리
-            if (u.role === 'admin') return;
-
             if (u.server === userData.value.server && u.nickname === userData.value.nickname) return;
 
             const col = Array.isArray(u.collection) ? u.collection : [];
@@ -751,7 +864,7 @@
 
           snap.forEach(doc => {
             const u = doc.data();
-            if (!u || u.role === 'admin') return;
+            if (!u) return;
             if (u.server === userData.value.server && u.nickname === userData.value.nickname) return;
 
             if (Array.isArray(u.collection) && (u.collection[absIdx] || 0) > 1) {
@@ -868,7 +981,7 @@
           const users = [];
           snapshot.forEach(doc => {
             const u = doc.data();
-            if (!u || u.role === 'admin') return;
+            if (!u) return;
             if (u.server === userData.value.server && u.nickname === userData.value.nickname) return;
 
             const total = (u.collection || []).reduce((a, b) => a + (b>0?1:0), 0);
@@ -923,8 +1036,6 @@
             const data = doc.data();
             if ((data.password || '') !== userInfo.password) { alert('비번 틀림'); return; }
             if (!Array.isArray(data.collection) || data.collection.length !== 81) data.collection = Array(81).fill(0);
-            // 혹시 이전에 admin role이 섞여있어도 유저로 고정
-            data.role = 'user';
             finalData = data;
           } else {
             finalData = {
@@ -944,6 +1055,7 @@
           favSet.value = loadFavSet();
 
           isLoggedIn.value = true;
+
           await checkAndResetDailyLimit();
           updateLastActive();
         } catch(e) {
@@ -978,25 +1090,49 @@
         showUserListPopup.value = false;
         showComparePopup.value = false;
         showNeedsPopup.value = false;
+        showAdminSettingsPopup.value = false;
       };
 
       return {
+        // auth
         isLoggedIn, isLoading, loginForm, handleLogin, logout,
         userData,
+
+        // views
         currentView, currentAlbumIdx, currentAlbumCards,
         openAlbum, prevAlbum, nextAlbum,
+
+        // cards
         updateCount, onCardTap, onCardHoldStart, onCardHoldEnd,
         getAlbumCount, totalCount, totalProgress,
+
+        // trade
         tradeCount,
+
+        // popups
         showPopup, showUserListPopup, showComparePopup, showHelpPopup,
         showNeedsPopup, openNeedsPopup, needsKeyword, needsListFiltered, needsLoading,
         openExchangeByAbsoluteIndex, exchangeList, popupCardName,
+
+        // members
         fetchUsersAndShowList, userList, filteredUserList, searchKeyword, memberFilter,
         toggleFavorite, isFavorite,
+
+        // compare
         openCompare, compareTarget, compareResult,
         copyTradeText, executeTrade,
+
+        // activity
         getActiveText, getActiveColor,
-        appConfig
+
+        // config
+        appConfig,
+        canEditAlbumConfig,
+        showAdminSettingsPopup,
+        saveAppConfig,
+
+        // reset
+        resetMyCardsOnly
       };
     }
   }).mount('#app');
