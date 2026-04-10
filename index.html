@@ -156,12 +156,11 @@
         <div v-for="(album, idx) in appConfig.albumNames" :key="idx"
              @click="openAlbum(idx)"
              class="album-card bg-white rounded-2xl p-2.5 border border-pink-100 shadow-sm cursor-pointer flex flex-col items-center">
-          <div class="w-16 h-16 rounded-xl overflow-hidden mb-1.5 relative flex items-center justify-center shadow-sm"
-                 :style="appConfig.albumCovers && appConfig.albumCovers[idx] ? '' : getAlbumGradient(idx)">
+          <div class="w-16 h-16 rounded-xl overflow-hidden mb-1.5 relative flex items-center justify-center bg-white border-2"
+               :class="getAlbumCount(idx) === 9 ? 'border-emerald-400' : 'border-gray-200'">
             <img v-if="appConfig.albumCovers && appConfig.albumCovers[idx]"
                  :src="appConfig.albumCovers[idx]" class="w-full h-full object-cover">
-            <!-- 그라디언트만 표시 (글자 없음) -->
-            <div v-if="getAlbumCount(idx) === 9" class="absolute inset-0 bg-black/20 flex items-center justify-center">
+            <div v-if="getAlbumCount(idx) === 9" class="absolute inset-0 bg-emerald-500/80 flex items-center justify-center">
               <i class="fas fa-check text-white text-2xl drop-shadow"></i>
             </div>
           </div>
@@ -1143,20 +1142,6 @@ createApp({
       return col.slice(currentAlbumIdx.value*9, currentAlbumIdx.value*9+9);
     });
 
-    // 앨범 그라디언트 자동 생성 (이름 첫 글자 기반)
-    const albumGradients = [
-      'background: linear-gradient(135deg, #f472b6, #c084fc)',  // 핑크→보라
-      'background: linear-gradient(135deg, #60a5fa, #34d399)',  // 파랑→민트
-      'background: linear-gradient(135deg, #fbbf24, #f97316)',  // 노랑→오렌지
-      'background: linear-gradient(135deg, #a78bfa, #ec4899)',  // 보라→핑크
-      'background: linear-gradient(135deg, #34d399, #06b6d4)',  // 민트→하늘
-      'background: linear-gradient(135deg, #f97316, #ef4444)',  // 오렌지→빨강
-      'background: linear-gradient(135deg, #06b6d4, #6366f1)',  // 하늘→인디고
-      'background: linear-gradient(135deg, #ec4899, #f97316)',  // 핑크→오렌지
-      'background: linear-gradient(135deg, #8b5cf6, #3b82f6)',  // 퍼플→파랑
-    ];
-    const getAlbumGradient = (idx) => albumGradients[idx % albumGradients.length];
-
     const getAlbumCount = idx => {
       if (!userData.value) return 0;
       return userData.value.collection.slice(idx*9, idx*9+9).filter(c=>c>0).length;
@@ -1975,7 +1960,7 @@ createApp({
       currentView, currentAlbumIdx, currentAlbumStickers,
       openAlbum, prevAlbum, nextAlbum,
       updateCount, onStickerTap, onStickerHoldStart, onStickerHoldEnd,
-      getAlbumCount, getAlbumGradient, totalCount, totalProgress,
+      getAlbumCount, totalCount, totalProgress,
       tradeCount, resetMyStickers,
       showPopup, showUserListPopup, showComparePopup,
       showNeedsPopup, openNeedsPopup, needsKeyword, needsListFiltered, needsLoading,
