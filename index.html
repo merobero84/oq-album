@@ -184,29 +184,56 @@
 
         <div class="grid grid-cols-3 gap-2">
           <div v-for="(count, i) in currentAlbumStickers" :key="i"
-               class="bg-white rounded-2xl p-2 border shadow-sm flex flex-col"
-               :class="count > 0 ? 'border-pink-200' : 'border-gray-100'">
-            <div class="flex-1 bg-gray-50 rounded-xl mb-1.5 relative overflow-hidden cursor-pointer border border-gray-100 h-20"
-                 @click="onStickerTap(i)"
+               class="bg-white rounded-2xl border shadow-sm flex flex-col overflow-hidden"
+               :class="count >= 2 ? 'border-pink-300' : count === 1 ? 'border-blue-200' : 'border-gray-100'">
+
+            <!-- 스티커 번호 + 상태 표시 영역 -->
+            <div class="relative flex flex-col items-center justify-center py-4 cursor-pointer select-none"
+                 :class="count >= 2 ? 'bg-pink-50' : count === 1 ? 'bg-blue-50' : 'bg-gray-50'"
+                 @click="updateCount(i, 1)"
                  @mousedown="onStickerHoldStart(i)" @mouseup="onStickerHoldEnd" @mouseleave="onStickerHoldEnd"
                  @touchstart.passive="onStickerHoldStart(i)" @touchend="onStickerHoldEnd" @touchcancel="onStickerHoldEnd">
-              <div class="absolute inset-0 flex flex-col items-center justify-center">
-                <span class="text-2xl text-gray-200">{{ ['💝','🌸','⭐','🎀','💫','🌈','🦋','🎭','👑'][currentAlbumIdx] }}</span>
-                <span class="text-[9px] font-black text-gray-300 mt-0.5">No.{{ i+1 }}</span>
+
+              <!-- 스티커 번호 -->
+              <span class="text-2xl font-black leading-none"
+                    :class="count >= 2 ? 'text-pink-400' : count === 1 ? 'text-blue-400' : 'text-gray-200'">
+                {{ i + 1 }}
+              </span>
+
+              <!-- 상태 텍스트 -->
+              <span class="text-[10px] font-black mt-1"
+                    :class="count >= 2 ? 'text-pink-500' : count === 1 ? 'text-blue-400' : 'text-gray-300'">
+                {{ count >= 2 ? '교환가능' : count === 1 ? '보유중' : '없음' }}
+              </span>
+
+              <!-- 탭=+1 힌트 (처음 한 번만) -->
+              <div class="absolute top-1 right-1 text-[8px] text-gray-300 font-black">탭+1</div>
+
+              <!-- 여유분 뱃지 -->
+              <div v-if="count >= 2"
+                   class="absolute top-1 left-1 bg-pink-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">
+                x{{ count }}
               </div>
-              <div v-if="count === 0" class="absolute inset-0 bg-white/90 flex flex-col items-center justify-center">
-                <i class="fas fa-search text-pink-400 text-base mb-0.5"></i>
-                <span class="text-[9px] font-black text-pink-400">구해요</span>
-                <span class="text-[8px] text-gray-300">탭→보유자</span>
-              </div>
-              <div v-if="count >= 2" class="absolute top-1 right-1 bg-pink-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">여유✓</div>
-              <div v-else-if="count === 1" class="absolute top-1 right-1 bg-gray-400 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">보유</div>
             </div>
-            <div class="flex items-center justify-between bg-gray-50 rounded-xl p-1 border border-gray-100">
-              <button @click="updateCount(i,-1)" class="w-6 h-6 rounded-lg bg-white text-gray-400 flex items-center justify-center text-sm border border-gray-200 btn-press font-black shadow-sm">−</button>
-              <span class="text-xs font-black" :class="count>0?'text-pink-500':'text-gray-300'">{{ count }}</span>
-              <button @click="updateCount(i,1)" class="w-6 h-6 rounded-lg bg-pink-500 text-white flex items-center justify-center text-sm btn-press font-black shadow-sm">+</button>
+
+            <!-- 하단 컨트롤 바 -->
+            <div class="flex items-center border-t"
+                 :class="count >= 2 ? 'border-pink-100 bg-pink-50/50' : count === 1 ? 'border-blue-100 bg-blue-50/30' : 'border-gray-100 bg-white'">
+              <button @click="updateCount(i,-1)"
+                      class="flex-none w-9 h-9 flex items-center justify-center text-gray-400 hover:text-gray-600 btn-press font-black text-lg border-r border-gray-100">
+                −
+              </button>
+              <span class="flex-1 text-center text-sm font-black"
+                    :class="count > 0 ? 'text-gray-700' : 'text-gray-300'">
+                {{ count }}개
+              </span>
+              <button @click="openExchangeByAbsoluteIndex(currentAlbumIdx * 9 + i)"
+                      class="flex-none w-9 h-9 flex items-center justify-center btn-press border-l border-gray-100"
+                      :class="count === 0 ? 'text-pink-400 hover:text-pink-600' : 'text-gray-300 hover:text-gray-400'">
+                <i class="fas fa-search text-xs"></i>
+              </button>
             </div>
+
           </div>
         </div>
 
@@ -218,12 +245,135 @@
     </div>
   </div>
 
-  <!-- ===== 시소 전용 FAB ===== -->
+  <!-- ===== 시소 전용 FAB (관리자 패널) ===== -->
   <button v-if="isLoggedIn && canEditAlbums && currentView === 'dashboard'"
-          @click="showAlbumSettingsPopup = true"
+          @click="openAdminPopup"
           class="fixed right-4 bottom-4 z-40 bg-gray-900 text-white w-14 h-14 rounded-full flex items-center justify-center btn-press shadow-xl">
     <i class="fas fa-gear text-xl"></i>
   </button>
+
+
+  <!-- ===== 관리자 패널 (시소 전용) ===== -->
+  <div v-if="showAdminPopup" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end justify-center z-50" @click.self="showAdminPopup=false">
+    <div class="bg-white sheet w-full max-w-md shadow-2xl max-h-[92vh] overflow-y-auto hide-scroll">
+      <div class="p-5">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-gray-900 text-white flex items-center justify-center"><i class="fas fa-shield-halved text-sm"></i></div>
+            <div>
+              <h3 class="text-base font-black text-gray-800">⚙️ 설정 & 관리</h3>
+              <p class="text-[10px] text-gray-400">67섭 시소 전용</p>
+            </div>
+          </div>
+          <button @click="showAdminPopup=false" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 btn-press"><i class="fas fa-times text-sm"></i></button>
+        </div>
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-2.5 mb-4">
+          <p class="text-[11px] text-amber-700 font-black">⚠️ 삭제된 데이터는 복구가 안 돼요! 신중하게 사용하세요.</p>
+        </div>
+        <div class="flex gap-1.5 mb-4">
+          <button class="tab-btn flex-1 text-center" :class="adminTab==='members'?'tab-on':'tab-off'" @click="adminTab='members'; loadAdminMembers()">👥 멤버</button>
+          <button class="tab-btn flex-1 text-center" :class="adminTab==='cleanup'?'tab-on':'tab-off'" @click="adminTab='cleanup'">🧹 정리</button>
+          <button class="tab-btn flex-1 text-center" :class="adminTab==='album'?'tab-on':'tab-off'" @click="adminTab='album'">📁 앨범</button>
+        </div>
+        <!-- 멤버 관리 탭 -->
+        <div v-if="adminTab==='members'">
+          <div class="relative mb-3">
+            <i class="fas fa-search absolute left-3.5 top-3.5 text-gray-300 text-xs"></i>
+            <input v-model="adminSearch" type="text" placeholder="닉네임 또는 서버 검색"
+                   class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-2xl text-sm bg-gray-50 focus:outline-none">
+          </div>
+          <div v-if="isAdminLoading" class="flex justify-center py-8"><div class="loader"></div></div>
+          <div v-else class="space-y-2 max-h-[48vh] overflow-y-auto hide-scroll">
+            <div v-for="member in filteredAdminMembers" :key="member.id"
+                 class="flex items-center gap-2 p-3 rounded-2xl border border-gray-100 bg-white">
+              <div class="w-2 h-2 rounded-full flex-none" :class="getActiveColor(member.lastActive)"></div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-black">S{{ member.server }}</span>
+                  <span class="font-black text-sm text-gray-800 truncate">{{ member.nickname }}</span>
+                </div>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <span class="text-[10px] text-gray-400">{{ getActiveText(member.lastActive) }}</span>
+                  <span class="text-[10px] font-black" :class="member.totalCount>0?'text-pink-500':'text-gray-300'">{{ member.totalCount }}/81</span>
+                </div>
+              </div>
+              <div class="flex gap-1.5 flex-none">
+                <button @click="adminResetMember(member)" class="text-[10px] bg-blue-50 text-blue-600 border border-blue-200 px-2 py-1.5 rounded-xl font-black btn-press">초기화</button>
+                <button @click="adminDeleteMember(member)" class="text-[10px] bg-red-50 text-red-500 border border-red-200 px-2 py-1.5 rounded-xl font-black btn-press">삭제</button>
+              </div>
+            </div>
+            <div v-if="filteredAdminMembers.length===0" class="text-center text-gray-400 py-8 text-xs bg-gray-50 rounded-2xl">
+              {{ adminSearch ? '검색 결과 없음' : '멤버가 없어요' }}
+            </div>
+          </div>
+        </div>
+        <!-- 일괄 정리 탭 -->
+        <div v-if="adminTab==='cleanup'" class="space-y-3">
+          <div class="border border-gray-200 rounded-2xl p-4">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-9 h-9 rounded-xl bg-orange-100 text-orange-500 flex items-center justify-center flex-none"><i class="fas fa-clock text-sm"></i></div>
+              <div>
+                <div class="text-sm font-black text-gray-800">장기 미접속자 삭제</div>
+                <div class="text-[11px] text-gray-400 mt-0.5">마지막 접속이 오래된 계정을 삭제해요</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 mb-3">
+              <label class="text-xs font-black text-gray-600 flex-none">기준:</label>
+              <select v-model.number="inactiveDays" class="flex-1 p-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none">
+                <option :value="7">7일 이상 미접속</option>
+                <option :value="14">14일 이상 미접속</option>
+                <option :value="30">30일 이상 미접속</option>
+                <option :value="60">60일 이상 미접속</option>
+              </select>
+            </div>
+            <button @click="adminDeleteInactive" :disabled="isAdminLoading"
+                    class="w-full py-2.5 bg-orange-500 text-white rounded-xl font-black text-sm btn-press flex items-center justify-center gap-2">
+              <i class="fas fa-user-clock"></i> {{ inactiveDays }}일 이상 미접속자 삭제
+            </button>
+          </div>
+          <div class="border border-gray-200 rounded-2xl p-4">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-9 h-9 rounded-xl bg-gray-100 text-gray-500 flex items-center justify-center flex-none"><i class="fas fa-ghost text-sm"></i></div>
+              <div>
+                <div class="text-sm font-black text-gray-800">유령 계정 삭제</div>
+                <div class="text-[11px] text-gray-400 mt-0.5">스티커가 하나도 없는 계정을 삭제해요</div>
+              </div>
+            </div>
+            <button @click="adminDeleteEmpty" :disabled="isAdminLoading"
+                    class="w-full py-2.5 bg-gray-700 text-white rounded-xl font-black text-sm btn-press flex items-center justify-center gap-2">
+              <i class="fas fa-ghost"></i> 스티커 0개 계정 전체 삭제
+            </button>
+          </div>
+          <div class="border border-red-200 rounded-2xl p-4 bg-red-50">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-9 h-9 rounded-xl bg-red-100 text-red-500 flex items-center justify-center flex-none"><i class="fas fa-triangle-exclamation text-sm"></i></div>
+              <div>
+                <div class="text-sm font-black text-red-700">전체 스티커 초기화</div>
+                <div class="text-[11px] text-red-400 mt-0.5">모든 유저 스티커를 0으로 만들어요<br>새 이벤트 시즌 시작할 때만 쓰세요!</div>
+              </div>
+            </div>
+            <button @click="adminResetAll" :disabled="isAdminLoading"
+                    class="w-full py-2.5 bg-red-500 text-white rounded-xl font-black text-sm btn-press flex items-center justify-center gap-2">
+              <i class="fas fa-rotate-left"></i> 모든 유저 스티커 초기화
+            </button>
+          </div>
+        </div>
+        <!-- 앨범 설정 탭 -->
+        <div v-if="adminTab==='album'">
+          <div class="space-y-3 mb-4">
+            <div v-for="(name, idx) in appConfig.albumNames" :key="idx" class="border border-gray-100 p-3 rounded-2xl">
+              <label class="text-xs font-black text-gray-600 mb-1.5 block">앨범 {{ idx+1 }}</label>
+              <div class="space-y-1.5">
+                <input v-model="appConfig.albumNames[idx]" type="text" placeholder="앨범 이름" class="w-full p-2 border border-gray-200 rounded-xl text-sm">
+                <input v-model="appConfig.albumCovers[idx]" type="text" placeholder="커버 이미지 URL (선택)" class="w-full p-2 border border-gray-200 rounded-xl text-sm text-gray-400">
+              </div>
+            </div>
+          </div>
+          <button @click="saveAppConfig" class="w-full bg-pink-500 text-white py-3 rounded-2xl font-black btn-press text-sm">저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ===== 멤버 팝업 ===== -->
   <div v-if="showUserListPopup" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-50" @click.self="showUserListPopup=false">
@@ -702,7 +852,13 @@
         </div>
       </div>
 
-      <p class="text-center text-xs text-pink-400 mb-4">오류 제보: <b>67섭 시소</b></p>
+      <div class="border border-pink-100 rounded-2xl p-3 mb-4 bg-pink-50 text-center">
+        <p class="text-xs text-pink-500 font-black mb-2">❓ 궁금한 점이 있나요?</p>
+        <button @click="contactAdmin" class="w-full bg-pink-500 text-white py-2.5 rounded-xl font-black text-sm btn-press flex items-center justify-center gap-2">
+          <i class="fas fa-comment-dots"></i> 시소에게 문의하기
+        </button>
+        <p class="text-[10px] text-pink-300 mt-1.5">앱 내 쪽지로 67섭 시소에게 바로 연결돼요</p>
+      </div>
       <button @click="closeHelp" class="w-full bg-gray-800 text-white py-3 rounded-2xl font-black text-sm btn-press">확인했습니다 ✅</button>
     </div>
   </div>
@@ -745,6 +901,14 @@ createApp({
     const showChatPopup = ref(false);
     const showRankingPopup = ref(false);
     const showHistoryPopup = ref(false);
+
+    // ─── 관리자 전용 상태 ────────────────────────────────────
+    const showAdminPopup = ref(false);
+    const adminTab = ref('members');
+    const adminSearch = ref('');
+    const adminMembers = ref([]);
+    const isAdminLoading = ref(false);
+    const inactiveDays = ref(7);
 
     // 검색/필터
     const searchKeyword = ref('');
@@ -961,10 +1125,7 @@ createApp({
     const onStickerHoldEnd = () => { if (holdTimer) clearTimeout(holdTimer); holdTimer = null; };
     const onStickerTap = i => {
       if (holdTriggered) { holdTriggered = false; return; }
-      const absIdx = currentAlbumIdx.value*9+i;
-      const col = userData.value?.collection || Array(81).fill(0);
-      if ((col[absIdx]||0)===0) openExchangeByAbsoluteIndex(absIdx);
-      else updateCount(i,1);
+      updateCount(i, 1);
     };
 
     // ─── 초기화 ──────────────────────────────────────────────
@@ -1473,6 +1634,131 @@ createApp({
       } finally { isHistoryLoading.value=false; }
     };
 
+    // ─── 관리자 기능 ─────────────────────────────────────────
+    const openAdminPopup = async () => {
+      adminTab.value = 'members';
+      adminSearch.value = '';
+      showAdminPopup.value = true;
+      await loadAdminMembers();
+    };
+
+    const loadAdminMembers = async () => {
+      if (!canEditAlbums.value) return;
+      isAdminLoading.value = true;
+      adminMembers.value = [];
+      try {
+        const snap = await db.collection('users').get();
+        const list = [];
+        snap.forEach(doc => {
+          const u = doc.data();
+          if (!u) return;
+          const col = Array.isArray(u.collection) ? u.collection : [];
+          const total = col.reduce((a,b)=>a+(b>0?1:0),0);
+          list.push({ id:doc.id, server:u.server, nickname:u.nickname, lastActive:u.lastActive, totalCount:total });
+        });
+        list.sort((a,b)=>(b.totalCount-a.totalCount)||(((tsToDate(b.lastActive)?.getTime()||0)-(tsToDate(a.lastActive)?.getTime()||0))));
+        adminMembers.value = list;
+      } catch(e) { alert('로드 실패: '+(e.message||e)); } finally { isAdminLoading.value=false; }
+    };
+
+    const filteredAdminMembers = computed(() => {
+      const kw = (adminSearch.value||'').toLowerCase().trim();
+      if (!kw) return adminMembers.value;
+      return adminMembers.value.filter(m=>(m.nickname||'').toLowerCase().includes(kw)||String(m.server||'').includes(kw));
+    });
+
+    const adminDeleteMember = async member => {
+      if (!confirm(`정말로 [S${member.server} ${member.nickname}]을(를) 삭제할까요?\n이 작업은 되돌릴 수 없어요!`)) return;
+      isAdminLoading.value = true;
+      try {
+        await db.collection('users').doc(member.id).delete();
+        adminMembers.value = adminMembers.value.filter(m=>m.id!==member.id);
+        alert('삭제 완료 ✅');
+      } catch(e) { alert('삭제 실패: '+(e.message||e)); } finally { isAdminLoading.value=false; }
+    };
+
+    const adminResetMember = async member => {
+      if (!confirm(`[S${member.server} ${member.nickname}]의 스티커를 전부 0으로 초기화할까요?`)) return;
+      isAdminLoading.value = true;
+      try {
+        const now = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('users').doc(member.id).update({ collection:Array(81).fill(0), lastUpdated:now });
+        const idx = adminMembers.value.findIndex(m=>m.id===member.id);
+        if (idx>=0) adminMembers.value[idx].totalCount = 0;
+        alert('초기화 완료 ✅');
+      } catch(e) { alert('초기화 실패: '+(e.message||e)); } finally { isAdminLoading.value=false; }
+    };
+
+    const adminDeleteInactive = async () => {
+      const cutoff = new Date(Date.now() - inactiveDays.value * 86400000);
+      if (!confirm(`마지막 접속이 ${inactiveDays.value}일 이상 지난 계정을 모두 삭제할까요?\n이 작업은 되돌릴 수 없어요!`)) return;
+      isAdminLoading.value = true;
+      try {
+        const snap = await db.collection('users').get();
+        const batch = db.batch();
+        let count = 0;
+        snap.forEach(doc => {
+          const u = doc.data();
+          const last = tsToDate(u.lastActive);
+          if (!last || last < cutoff) {
+            // 시소 본인은 제외
+            if (u.server===67&&u.nickname==='시소') return;
+            batch.delete(doc.ref);
+            count++;
+          }
+        });
+        if (count===0) { alert('해당 조건의 계정이 없어요!'); isAdminLoading.value=false; return; }
+        await batch.commit();
+        alert(`${count}개 계정 삭제 완료 ✅`);
+        await loadAdminMembers();
+      } catch(e) { alert('실패: '+(e.message||e)); } finally { isAdminLoading.value=false; }
+    };
+
+    const adminDeleteEmpty = async () => {
+      if (!confirm('스티커가 0개인 계정을 모두 삭제할까요?\n이 작업은 되돌릴 수 없어요!')) return;
+      isAdminLoading.value = true;
+      try {
+        const snap = await db.collection('users').get();
+        const batch = db.batch();
+        let count = 0;
+        snap.forEach(doc => {
+          const u = doc.data();
+          if (u.server===67&&u.nickname==='시소') return;
+          const col = Array.isArray(u.collection) ? u.collection : [];
+          const total = col.reduce((a,b)=>a+(b>0?1:0),0);
+          if (total===0) { batch.delete(doc.ref); count++; }
+        });
+        if (count===0) { alert('스티커 0개 계정이 없어요!'); isAdminLoading.value=false; return; }
+        await batch.commit();
+        alert(`${count}개 유령 계정 삭제 완료 ✅`);
+        await loadAdminMembers();
+      } catch(e) { alert('실패: '+(e.message||e)); } finally { isAdminLoading.value=false; }
+    };
+
+    const adminResetAll = async () => {
+      const input = prompt('⚠️ 모든 유저의 스티커를 0으로 초기화합니다.\n새 이벤트 시즌 시작할 때만 사용하세요!\n\n계속하려면 [전체초기화] 라고 입력하세요:');
+      if (!input || input.trim() !== '전체초기화') { alert('취소되었습니다.'); return; }
+      isAdminLoading.value = true;
+      try {
+        const snap = await db.collection('users').get();
+        const batch = db.batch();
+        const now = firebase.firestore.FieldValue.serverTimestamp();
+        snap.forEach(doc => { batch.update(doc.ref, { collection:Array(81).fill(0), lastUpdated:now }); });
+        await batch.commit();
+        // 내 데이터도 초기화
+        if (userData.value) { userData.value.collection = Array(81).fill(0); localStorage.setItem('oq_user_v4', JSON.stringify(userData.value)); }
+        alert('전체 초기화 완료 ✅\n모든 유저의 스티커가 0이 됐어요.');
+        await loadAdminMembers();
+      } catch(e) { alert('실패: '+(e.message||e)); } finally { isAdminLoading.value=false; }
+    };
+
+    const contactAdmin = async () => {
+      closeHelp();
+      // 시소 계정으로 직접 쪽지 오픈
+      const adminUser = { id:'S67_시소', server:67, nickname:'시소' };
+      await openDirectChat(adminUser);
+    };
+
     // ─── 로그인/로그아웃 ─────────────────────────────────────
     const handleLogin = async () => {
       if (isLoading.value) return;
@@ -1543,7 +1829,7 @@ createApp({
       loginForm.value = { server:'', nickname:'', password:'' };
       currentView.value = 'dashboard';
       [showPopup, showUserListPopup, showComparePopup, showNeedsPopup,
-       showDealBuilder, showHelpPopup, showChatPopup, showRankingPopup, showHistoryPopup]
+       showDealBuilder, showHelpPopup, showChatPopup, showRankingPopup, showHistoryPopup, showAdminPopup]
         .forEach(r=>r.value=false);
     };
 
@@ -1585,7 +1871,12 @@ createApp({
       // 랭킹
       showRankingPopup, openRanking, rankingList,
       // 히스토리
-      showHistoryPopup, openHistoryPopup, historyList, isHistoryLoading
+      showHistoryPopup, openHistoryPopup, historyList, isHistoryLoading,
+      // 관리자
+      showAdminPopup, adminTab, adminSearch, adminMembers, isAdminLoading, inactiveDays,
+      openAdminPopup, loadAdminMembers, filteredAdminMembers,
+      adminDeleteMember, adminResetMember, adminDeleteInactive, adminDeleteEmpty, adminResetAll,
+      contactAdmin
     };
   }
 }).mount('#app');
