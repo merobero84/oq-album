@@ -160,12 +160,9 @@
                  :style="appConfig.albumCovers && appConfig.albumCovers[idx] ? '' : getAlbumGradient(idx)">
             <img v-if="appConfig.albumCovers && appConfig.albumCovers[idx]"
                  :src="appConfig.albumCovers[idx]" class="w-full h-full object-cover">
-            <div v-else class="flex flex-col items-center justify-center w-full h-full">
-              <span class="text-white font-black text-xl drop-shadow leading-none">{{ (appConfig.albumNames[idx]||'앨범')[0] }}</span>
-              <span class="text-white/70 text-[9px] font-bold mt-0.5">{{ idx+1 }}</span>
-            </div>
-            <div v-if="getAlbumCount(idx) === 9" class="absolute inset-0 bg-black/30 flex items-center justify-center">
-              <i class="fas fa-check text-white text-xl drop-shadow"></i>
+            <!-- 그라디언트만 표시 (글자 없음) -->
+            <div v-if="getAlbumCount(idx) === 9" class="absolute inset-0 bg-black/20 flex items-center justify-center">
+              <i class="fas fa-check text-white text-2xl drop-shadow"></i>
             </div>
           </div>
           <div class="text-[10px] font-black text-gray-700 text-center truncate w-full mb-1">{{ album }}</div>
